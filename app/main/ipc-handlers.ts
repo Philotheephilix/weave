@@ -1,7 +1,3 @@
-/**
- * IPC bridge between Electron main process and renderer.
- * All channel names are prefixed 'weave:' to avoid collisions.
- */
 import { ipcMain } from 'electron'
 import { TorManager } from './tor-manager'
 import { DHTDiscovery } from './dht-discovery'

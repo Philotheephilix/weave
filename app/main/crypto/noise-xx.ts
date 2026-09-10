@@ -1,11 +1,9 @@
-/**
- * Noise_XX_25519_ChaChaPoly_SHA256
- * Frame format: uint16-BE(ciphertext_len) || ciphertext+tag(16 bytes)
- *
- * Role ordering:
- *   Initiator: writeHandshake() → readHandshake() → writeHandshake()
- *   Responder: readHandshake() → writeHandshake() → readHandshake()
- */
+// Noise_XX_25519_ChaChaPoly_SHA256
+// Frame format: uint16-BE(ciphertext_len) || ciphertext+tag(16 bytes)
+//
+// Role ordering:
+//   Initiator: writeHandshake() → readHandshake() → writeHandshake()
+//   Responder: readHandshake() → writeHandshake() → readHandshake()
 import { x25519 } from '@noble/curves/ed25519'
 import { chacha20poly1305 } from '@noble/ciphers/chacha'
 import { sha256 } from '@noble/hashes/sha256'
@@ -128,7 +126,7 @@ export class NoiseXXSession {
     this.h = mixHash(this.h, encS);
     [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteStaticPub))
     this.n = 0
-    const encPayload = msg.slice(off); off = msg.length
+    const encPayload = msg.slice(off)
     aeadDecrypt(this.k, this.n++, this.h, encPayload)
     this.h = mixHash(this.h, encPayload)
     this.step = 2

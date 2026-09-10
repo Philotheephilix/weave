@@ -164,10 +164,8 @@ contract WeavePermissionedRegistry {
         bytes32 lh = keccak256(bytes(label));
         SubnameRecord storage r = records[lh];
         if (r.owner == address(0)) revert NotRegistered();
-        // Prevent forcible burn of unexpired tokens — expiry must have passed
-        // or the token must be a guest (GUEST_ROLES only) to allow early revoke.
-        bool isGuestOnly = (r.roleBitmap == GUEST_ROLES);
-        require(isGuestOnly || r.expiry < block.timestamp, "token not expired");
+        // Prevent forcible burn before expiry regardless of role tier.
+        require(r.expiry < block.timestamp, "token not expired");
         _burn(r.owner, tokenIds[lh]);
         delete records[lh];
         delete tokenIds[lh];

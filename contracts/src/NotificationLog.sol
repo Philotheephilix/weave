@@ -52,10 +52,15 @@ contract NotificationLog {
         return _matches[userPubkeyHash];
     }
 
-    /// @notice Client clears its own slot after processing.
-    ///         Only the CRE forwarder or owner may clear (prevents griefing).
-    function clearMatches(bytes32 userPubkeyHash) external {
-        if (msg.sender != creForwarder && msg.sender != owner) revert NotForwarder();
+    /// @notice Clear a notification slot.
+    ///         The CRE forwarder, owner, or the slot's own keyholder may clear.
+    ///         Keyholder self-service: pass the raw spend pubkey bytes; the contract
+    ///         verifies sha256(pubkey) == userPubkeyHash before deleting.
+    function clearMatches(bytes32 userPubkeyHash, bytes calldata pubkeyPreimage) external {
+        bool isTrusted = msg.sender == creForwarder || msg.sender == owner;
+        bool isSelf = pubkeyPreimage.length > 0 &&
+                      sha256(pubkeyPreimage) == userPubkeyHash;
+        if (!isTrusted && !isSelf) revert NotForwarder();
         delete _matches[userPubkeyHash];
     }
 }

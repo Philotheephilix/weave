@@ -16,7 +16,6 @@ async function bootstrap(): Promise<void> {
   await app.whenReady()
   await Promise.all([tor.start(), dht.start()])
 
-  // Create ephemeral onion service for this session
   const onion = await tor.createOnionService(3000)
   dht.announce(identity.viewPub, onion.onionAddress)
 

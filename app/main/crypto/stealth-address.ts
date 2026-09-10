@@ -1,11 +1,6 @@
-/**
- * ERC-5564 stealth addressing on secp256k1.
- * stealth_addr = P_spend + sha256(ECDH(r, P_view)) * G
- *
- * NOTE: uses sha256 as stand-in for keccak256 — consistent with the CRE
- * Go scanner so both sides agree on which address to compare.
- * Replace both with keccak256 before mainnet.
- */
+// NOTE: uses sha256 as stand-in for keccak256 — consistent with the CRE
+// Go scanner so both sides agree on which address to compare.
+// Replace both with keccak256 before mainnet.
 import { secp256k1 } from '@noble/curves/secp256k1'
 import { sha256 } from '@noble/hashes/sha256'
 import { ecdhSecp256k1 } from './secp256k1-ecdh'
@@ -41,8 +36,7 @@ export function checkStealthAddress(
 }
 
 function _pointToAddress(point: ReturnType<typeof secp256k1.ProjectivePoint.fromHex>): string {
-  // Ethereum address = sha256(uncompressed_xy)[12:]  (sha256 stand-in for keccak256)
-  const uncompressed = point.toRawBytes(false) // 65 bytes: 0x04 || X || Y
-  const hash = sha256(uncompressed.slice(1))   // hash of 64-byte XY
+  const uncompressed = point.toRawBytes(false)
+  const hash = sha256(uncompressed.slice(1))
   return '0x' + Buffer.from(hash.slice(12)).toString('hex')
 }

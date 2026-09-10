@@ -1,8 +1,4 @@
-/**
- * DHT-based peer discovery over bittorrent-dht.
- * Key = sha256(stealthViewPubKey); value = JSON { onion, ts } encrypted with viewPub.
- * TTL ~10 min (DHT naturally expires values).
- */
+// DHT values are encrypted to the recipient's viewPub; TTL ~10 min (DHT natural expiry).
 import DHT from 'bittorrent-dht'
 import { sha256 } from '@noble/hashes/sha256'
 import { secp256k1 } from '@noble/curves/secp256k1'

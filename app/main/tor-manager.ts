@@ -1,9 +1,6 @@
-/**
- * Manages a bundled Tor process and creates ephemeral v3 onion services.
- * Communicates with Tor via the control port (9051) using AUTHENTICATE + ADD_ONION.
- */
 import { spawn, ChildProcess } from 'child_process'
 import * as net from 'net'
+import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -16,7 +13,6 @@ export class TorManager {
   private proc: ChildProcess | null = null
   private controlSocket: net.Socket | null = null
   private ready = false
-  private onionServices: OnionService[] = []
 
   private torBinPath(): string {
     const platform = process.platform
@@ -31,7 +27,7 @@ export class TorManager {
     const bin = this.torBinPath()
     if (!fs.existsSync(bin)) throw new Error(`Tor binary not found at ${bin}`)
 
-    const dataDir = path.join(require('os').tmpdir(), 'weave-tor')
+    const dataDir = path.join(os.tmpdir(), 'weave-tor')
     this.proc = spawn(bin, [
       '--SocksPort', '9050',
       '--ControlPort', '9051',
@@ -71,7 +67,8 @@ export class TorManager {
           resolve(buf)
         }
       }
-      this.controlSocket.on('data', handler)
+      // Use once so each call's handler is removed after it fires, preventing accumulation.
+      this.controlSocket.once('data', handler)
       this.controlSocket.once('error', reject)
       this.controlSocket.write(cmd + '\r\n')
     })
@@ -92,9 +89,7 @@ export class TorManager {
     )
     const match = reply.match(/ServiceID=([a-z2-7]{56})/)
     if (!match) throw new Error(`Failed to create onion service: ${reply}`)
-    const svc: OnionService = { onionAddress: `${match[1]}.onion`, port: localPort }
-    this.onionServices.push(svc)
-    return svc
+    return { onionAddress: `${match[1]}.onion`, port: localPort }
   }
 
   getSocksProxy(): { host: string; port: number } {

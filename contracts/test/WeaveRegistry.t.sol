@@ -100,8 +100,7 @@ contract WeaveRegistryTest is Test {
     // ── Unregister ────────────────────────────────────────────────────────────
 
     function test_unregister_burns_expired_token() public {
-        // Register as guest so it can be forcibly unregistered before expiry (GUEST_ROLES only)
-        vm.prank(address(this)); // owner == test contract
+        vm.prank(address(this));
         registrar.registerGuest("tempguest", alice, 1 days, dummyIdentity);
 
         bytes32 lh = keccak256(bytes("tempguest"));
@@ -211,8 +210,22 @@ contract WeaveRegistryTest is Test {
 
         vm.prank(forwarder);
         notifLog.addMatches(hash, ids);
-        // owner (this test contract) can clear
-        notifLog.clearMatches(hash);
+        // owner (this test contract) can clear — pass empty preimage
+        notifLog.clearMatches(hash, "");
+        assertEq(notifLog.getMatches(hash).length, 0);
+    }
+
+    function test_notifLog_clearMatches_by_keyholder() public {
+        bytes memory spendPub = hex"0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
+        bytes32 hash = sha256(spendPub);
+        string[] memory ids = new string[](1);
+        ids[0] = "ann-002";
+
+        vm.prank(forwarder);
+        notifLog.addMatches(hash, ids);
+        // any address can clear by proving preimage
+        vm.prank(alice);
+        notifLog.clearMatches(hash, spendPub); // proves ownership of slot
         assertEq(notifLog.getMatches(hash).length, 0);
     }
 
@@ -220,6 +233,6 @@ contract WeaveRegistryTest is Test {
         bytes32 hash = keccak256("userkey");
         vm.prank(alice);
         vm.expectRevert(NotificationLog.NotForwarder.selector);
-        notifLog.clearMatches(hash);
+        notifLog.clearMatches(hash, "");
     }
 }

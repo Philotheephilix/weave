@@ -1,8 +1,5 @@
 import { secp256k1 } from '@noble/curves/secp256k1'
 
-/**
- * ECDH on secp256k1: returns x-coordinate of scalar * compressedPub as 32 bytes.
- */
 export function ecdhSecp256k1(privKey: Uint8Array, compressedPub: Uint8Array): Uint8Array {
   const shared = secp256k1.ProjectivePoint.fromHex(compressedPub)
     .multiply(BigInt('0x' + Buffer.from(privKey).toString('hex')))

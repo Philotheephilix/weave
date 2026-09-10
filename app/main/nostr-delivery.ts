@@ -1,9 +1,5 @@
-/**
- * NIP-59 gift-wrap offline delivery fallback via public Nostr relays.
- * Wraps encrypted message in a gift-wrap event so the outer envelope
- * reveals nothing about sender, recipient, or content.
- */
-import { generateSecretKey, getPublicKey, SimplePool } from 'nostr-tools'
+import { getPublicKey, SimplePool } from 'nostr-tools'
+import { decode as nip19decode } from 'nostr-tools/nip19'
 import { wrapEvent, unwrapEvent } from 'nostr-tools/nip59'
 import type { Event } from 'nostr-tools'
 
@@ -27,13 +23,17 @@ export class NostrDelivery {
     recipientNpub: string,
     message: string,
   ): Promise<void> {
+    // wrapEvent and p-tag both require raw hex pubkey; decode npub bech32
+    const decoded = nip19decode(recipientNpub)
+    if (decoded.type !== 'npub') throw new Error('recipientNpub must be an npub string')
+    const recipientHex = decoded.data as string
     const rumor = {
       kind: 14,
       content: message,
-      tags: [['p', recipientNpub]],
+      tags: [['p', recipientHex]],
       created_at: Math.floor(Date.now() / 1000),
     }
-    const giftWrap = wrapEvent(rumor, senderPriv, recipientNpub)
+    const giftWrap = wrapEvent(rumor, senderPriv, recipientHex)
     await Promise.all(this.relays.map(relay =>
       this.pool.publish([relay], giftWrap).catch(() => {})
     ))

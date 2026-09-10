@@ -1,7 +1,3 @@
-/**
- * Manages local Weave identity: key generation, ENSv2 handle resolution,
- * and polling NotificationLog for CRE stealth scan results.
- */
 import { createPublicClient, http, decodeAbiParameters, parseAbiParameters } from 'viem'
 import { sepolia } from 'viem/chains'
 import { secp256k1 } from '@noble/curves/secp256k1'
