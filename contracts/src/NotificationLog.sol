@@ -2,13 +2,15 @@
 pragma solidity ^0.8.25;
 
 /// @dev Receives CRE Confidential Workflow output: matched ERC-5564 announcement IDs.
-///      Only the CRE DON forwarder address can write.
-///      Weave client polls getMatches(sha256(stealthViewKey)) to detect incoming calls.
+///      CRE DON calls onReport(metadata, report) via the KeystoneForwarder.
+///      Weave client polls getMatches(sha256(spendPub_compressed_33_bytes)) to detect incoming calls.
+///
+///      Ethereum Sepolia KeystoneForwarder: 0xF8344CFd5c43616a4366C34E3EEE75af79a74482
 contract NotificationLog {
     mapping(bytes32 => string[]) private _matches;
 
-    // Set after CRE workflow deployment; updatable by owner for Phase 1
-    address public creForwarder;
+    // KeystoneForwarder address on Sepolia — set in constructor, updatable by owner.
+    address public keystoneForwarder;
     address public owner;
 
     event MatchAdded(bytes32 indexed userPubkeyHash, string announcementId);
@@ -16,15 +18,11 @@ contract NotificationLog {
 
     error NotForwarder();
     error NotOwner();
+    error InvalidReport();
 
-    constructor(address _creForwarder) {
-        creForwarder = _creForwarder;
+    constructor(address _keystoneForwarder) {
+        keystoneForwarder = _keystoneForwarder;
         owner = msg.sender;
-    }
-
-    modifier onlyCreForwarder() {
-        if (msg.sender != creForwarder) revert NotForwarder();
-        _;
     }
 
     modifier onlyOwner() {
@@ -32,35 +30,54 @@ contract NotificationLog {
         _;
     }
 
-    /// @notice Set forwarder after CRE workflow is deployed
-    function setCreForwarder(address newForwarder) external onlyOwner {
-        creForwarder = newForwarder;
+    function setKeystoneForwarder(address newForwarder) external onlyOwner {
+        keystoneForwarder = newForwarder;
         emit ForwarderUpdated(newForwarder);
     }
 
-    /// @notice Called by CRE DON after TEE scanning completes
-    function addMatches(bytes32 userPubkeyHash, string[] calldata announcementIds)
-        external onlyCreForwarder
-    {
+    // ── IReceiver ─────────────────────────────────────────────────────────────
+
+    /// @notice Called by the CRE KeystoneForwarder after DON consensus.
+    ///         `metadata` = 64 bytes (workflowId || workflowName || workflowOwner || reportId)
+    ///         `report`   = abi.encode({bytes32 userPubkeyHash, string[] matchedIds})
+    function onReport(bytes calldata /*metadata*/, bytes calldata report) external {
+        if (msg.sender != keystoneForwarder) revert NotForwarder();
+        if (report.length < 64) revert InvalidReport();
+
+        (bytes32 userPubkeyHash, string[] memory ids) = abi.decode(report, (bytes32, string[]));
+        for (uint256 i = 0; i < ids.length; i++) {
+            _matches[userPubkeyHash].push(ids[i]);
+            emit MatchAdded(userPubkeyHash, ids[i]);
+        }
+    }
+
+    /// @notice ERC-165 support (required by KeystoneForwarder)
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        // IReceiver: bytes4(keccak256("onReport(bytes,bytes)")) = 0x35b16d3d
+        return interfaceId == 0x35b16d3d || interfaceId == 0x01ffc9a7;
+    }
+
+    // ── Client reads ──────────────────────────────────────────────────────────
+
+    function getMatches(bytes32 userPubkeyHash) external view returns (string[] memory) {
+        return _matches[userPubkeyHash];
+    }
+
+    /// @notice Owner-only write for testing without CRE forwarder.
+    function addMatchesDirect(bytes32 userPubkeyHash, string[] calldata announcementIds) external onlyOwner {
         for (uint256 i = 0; i < announcementIds.length; i++) {
             _matches[userPubkeyHash].push(announcementIds[i]);
             emit MatchAdded(userPubkeyHash, announcementIds[i]);
         }
     }
 
-    function getMatches(bytes32 userPubkeyHash) external view returns (string[] memory) {
-        return _matches[userPubkeyHash];
-    }
-
     /// @notice Clear a notification slot.
-    ///         The CRE forwarder, owner, or the slot's own keyholder may clear.
-    ///         Keyholder self-service: pass the raw spend pubkey bytes; the contract
-    ///         verifies sha256(pubkey) == userPubkeyHash before deleting.
+    ///         Owner or slot keyholder (proves sha256(pubkey) == userPubkeyHash) may clear.
     function clearMatches(bytes32 userPubkeyHash, bytes calldata pubkeyPreimage) external {
-        bool isTrusted = msg.sender == creForwarder || msg.sender == owner;
+        bool isOwner = msg.sender == owner;
         bool isSelf = pubkeyPreimage.length > 0 &&
                       sha256(pubkeyPreimage) == userPubkeyHash;
-        if (!isTrusted && !isSelf) revert NotForwarder();
+        if (!isOwner && !isSelf) revert NotForwarder();
         delete _matches[userPubkeyHash];
     }
 }

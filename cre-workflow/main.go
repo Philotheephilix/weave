@@ -7,11 +7,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"log/slog"
+	"math/big"
+	"strings"
 
-	cresdk "github.com/smartcontractkit/cre-sdk-go/pkg/cre"
-	"github.com/smartcontractkit/cre-sdk-go/pkg/cre/types/cron"
-	"github.com/smartcontractkit/cre-sdk-go/pkg/wasm"
+	pb "github.com/smartcontractkit/chainlink-protos/cre/go/values/pb"
+	"github.com/smartcontractkit/cre-sdk-go/capabilities/blockchain/evm"
+	"github.com/smartcontractkit/cre-sdk-go/capabilities/scheduler/cron"
+	cresdk "github.com/smartcontractkit/cre-sdk-go/cre"
+	"github.com/smartcontractkit/cre-sdk-go/cre/wasm"
 )
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -22,32 +26,28 @@ type SecretConfig struct {
 
 type Config struct {
 	Schedule          string       `json:"schedule"`
-	RPCEndpoint       string       `json:"rpc_endpoint"`
 	AnnouncerContract string       `json:"announcer_contract"`
 	NotificationLog   string       `json:"notification_contract"`
+	GasLimit          uint64       `json:"gas_limit"`
 	SecretIDs         SecretConfig `json:"secret_ids"`
-	LastScannedBlock  uint64       `json:"last_scanned_block"`
+	LastScannedBlock  int64        `json:"last_scanned_block"`
 }
 
 // ── Workflow entry ────────────────────────────────────────────────────────────
 
-func InitWorkflow(config *Config) (cresdk.Workflow, error) {
-	return cresdk.NewWorkflow(
-		// HandlerInTee: spending key + RPC call stay inside AWS Nitro enclave.
-		// cre.AnyTee{} accepts any TEE type.
+func InitWorkflow(config *Config, _ *slog.Logger, _ cresdk.SecretsProvider) (cresdk.Workflow[*Config], error) {
+	return cresdk.Workflow[*Config]{
 		cresdk.HandlerInTee(
 			cron.Trigger(&cron.Config{Schedule: config.Schedule}),
-			func(runtime cresdk.TeeRuntime, _ *cron.Payload) (string, error) {
-				return runScan(config, runtime)
-			},
+			runScan,
 			cresdk.AnyTee{},
 		),
-	), nil
+	}, nil
 }
 
 // ── TEE handler ───────────────────────────────────────────────────────────────
 
-func runScan(config *Config, runtime cresdk.TeeRuntime) (string, error) {
+func runScan(config *Config, runtime cresdk.TeeRuntime, _ *cron.Payload) (string, error) {
 	// Step 1: fetch spending key from Vault DON — stays in enclave memory only
 	secrets, err := runtime.GetSecrets([]*cresdk.SecretRequest{
 		{Id: config.SecretIDs.SpendingKey},
@@ -55,32 +55,49 @@ func runScan(config *Config, runtime cresdk.TeeRuntime) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("GetSecrets: %w", err)
 	}
-	spendingKey, err := hex.DecodeString(secrets[0].Value)
+	spendingKey, err := hex.DecodeString(strings.TrimPrefix(secrets[0].Value, "0x"))
 	if err != nil {
 		return "", fmt.Errorf("spending key hex decode: %w", err)
 	}
 
-	// Step 2: confidential HTTP — RPC call inside enclave; hidden from operators
-	announcerURL := fmt.Sprintf(
-		"%s/v1/announcements?contract=%s&fromBlock=%d",
-		config.RPCEndpoint, config.AnnouncerContract, config.LastScannedBlock,
-	)
-	req, err := http.NewRequest(http.MethodGet, announcerURL, nil)
+	donRuntime := runtime.UsingTheDons()
+
+	// Step 2: fetch ERC-5564 Announcement events via CRE EVM read capability.
+	sepoliaClient := &evm.Client{ChainSelector: evm.EthereumTestnetSepolia}
+
+	announcerAddr, err := hex.DecodeString(strings.TrimPrefix(config.AnnouncerContract, "0x"))
 	if err != nil {
-		return "", fmt.Errorf("build request: %w", err)
+		return "", fmt.Errorf("announcer address decode: %w", err)
 	}
-	resp, err := runtime.SendRequestInTee(req).Await()
+
+	announcementTopic, err := hex.DecodeString("555d539bb0d170c9cae5a00fe08ce40e85bf37e3b409e8c8bfba28acf68b8af7")
 	if err != nil {
-		return "", fmt.Errorf("confidential HTTP: %w", err)
+		return "", fmt.Errorf("topic decode: %w", err)
 	}
-	defer resp.Body.Close()
+
+	logsReply, err := sepoliaClient.FilterLogs(donRuntime, &evm.FilterLogsRequest{
+		FilterQuery: &evm.FilterQuery{
+			FromBlock: bigIntPB(config.LastScannedBlock),
+			Addresses: [][]byte{announcerAddr},
+			Topics:    []*evm.Topics{{Topic: [][]byte{announcementTopic}}},
+		},
+	}).Await()
+	if err != nil {
+		return "", fmt.Errorf("FilterLogs: %w", err)
+	}
 
 	var announcements []ERC5564Announcement
-	if err := json.NewDecoder(resp.Body).Decode(&announcements); err != nil {
-		return "", fmt.Errorf("decode announcements: %w", err)
+	for _, log := range logsReply.Logs {
+		if len(log.Data) < 32 || len(log.Topics) < 2 {
+			continue
+		}
+		announcements = append(announcements, ERC5564Announcement{
+			StealthAddress: hex.EncodeToString(log.Topics[1]),
+			EphemeralPubkey: log.Data,
+		})
 	}
 
-	// Step 3: scan — all crypto in enclave (crypto.go)
+	// Step 3: scan stealth addresses — all crypto in enclave (crypto.go)
 	matches, err := scanAnnouncements(spendingKey, announcements)
 	if err != nil {
 		return "", err
@@ -89,12 +106,10 @@ func runScan(config *Config, runtime cresdk.TeeRuntime) (string, error) {
 		return "no matches", nil
 	}
 
-	// Step 4: cross TEE → DON boundary; only non-sensitive output
-	donRuntime := runtime.UsingTheDons()
-
-	// Derive spend public key so the hash matches what the client computes from spendPub.
+	// Step 4: build payload and generate DON-signed report.
 	spendPub := deriveSpendPub(spendingKey)
 	pubkeyHash := sha256.Sum256(spendPub)
+
 	payload, err := json.Marshal(struct {
 		UserPubkeyHash [32]byte `json:"userPubkeyHash"`
 		MatchedIDs     []string `json:"matchedIds"`
@@ -103,7 +118,6 @@ func runScan(config *Config, runtime cresdk.TeeRuntime) (string, error) {
 		return "", fmt.Errorf("marshal payload: %w", err)
 	}
 
-	// Step 5: generate DON-signed report and write to NotificationLog.sol
 	report, err := donRuntime.GenerateReport(&cresdk.ReportRequest{
 		EncodedPayload: payload,
 		EncoderName:    "evm",
@@ -114,19 +128,44 @@ func runScan(config *Config, runtime cresdk.TeeRuntime) (string, error) {
 		return "", fmt.Errorf("GenerateReport: %w", err)
 	}
 
-	evmClient := donRuntime.GetEVMClient("sepolia")
-	_, err = evmClient.WriteReport(donRuntime, &cresdk.WriteCreReportRequest{
-		Receiver: config.NotificationLog,
-		Report:   report,
-		GasConfig: &cresdk.GasConfig{
-			GasLimit: 500_000,
-		},
+	// Step 5: submit report on-chain via KeystoneForwarder → NotificationLog.onReport
+	receiverAddr, err := hex.DecodeString(strings.TrimPrefix(config.NotificationLog, "0x"))
+	if err != nil {
+		return "", fmt.Errorf("receiver address decode: %w", err)
+	}
+
+	gasLimit := config.GasLimit
+	if gasLimit == 0 {
+		gasLimit = 500_000
+	}
+
+	resp, err := sepoliaClient.WriteReport(donRuntime, &evm.WriteCreReportRequest{
+		Receiver:  receiverAddr,
+		Report:    report,
+		GasConfig: &evm.GasConfig{GasLimit: gasLimit},
 	}).Await()
 	if err != nil {
 		return "", fmt.Errorf("WriteReport: %w", err)
 	}
+	if resp.TxStatus != evm.TxStatus_TX_STATUS_SUCCESS {
+		msg := "unknown error"
+		if resp.ErrorMessage != nil {
+			msg = *resp.ErrorMessage
+		}
+		return "", fmt.Errorf("tx failed (%v): %s", resp.TxStatus, msg)
+	}
 
-	return fmt.Sprintf("wrote %d matches on-chain", len(matches)), nil
+	txHash := fmt.Sprintf("0x%x", resp.TxHash)
+	return fmt.Sprintf("wrote %d matches on-chain (tx %s)", len(matches), txHash), nil
+}
+
+func bigIntPB(n int64) *pb.BigInt {
+	b := big.NewInt(n)
+	sign := int64(b.Sign())
+	if sign < 0 {
+		sign = -1
+	}
+	return &pb.BigInt{AbsVal: b.Bytes(), Sign: sign}
 }
 
 func main() {

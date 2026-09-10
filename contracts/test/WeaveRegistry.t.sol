@@ -15,7 +15,7 @@ contract WeaveRegistryTest is Test {
 
     address alice   = makeAddr("alice");
     address bob     = makeAddr("bob");
-    address forwarder = makeAddr("forwarder");
+    address keystoneForwarder = makeAddr("keystoneForwarder");
 
     WeaveWildcardResolver.WeaveIdentity dummyIdentity;
 
@@ -23,7 +23,7 @@ contract WeaveRegistryTest is Test {
         resolver  = new WeaveWildcardResolver();
         registry  = new WeavePermissionedRegistry(address(resolver));
         registrar = new WeaveRegistrar(address(registry), address(resolver));
-        notifLog  = new NotificationLog(forwarder);
+        notifLog  = new NotificationLog(keystoneForwarder);
 
         // wire up roles
         registry.grantRegistrar(address(registrar));
@@ -180,27 +180,41 @@ contract WeaveRegistryTest is Test {
 
     // ── NotificationLog ───────────────────────────────────────────────────────
 
-    function test_notifLog_addMatches_and_retrieve() public {
+    function test_notifLog_onReport_and_retrieve() public {
         bytes32 hash = keccak256("userkey");
         string[] memory ids = new string[](2);
         ids[0] = "ann-001"; ids[1] = "ann-002";
 
-        vm.prank(forwarder);
-        notifLog.addMatches(hash, ids);
+        bytes memory report = abi.encode(hash, ids);
+        bytes memory metadata = new bytes(64); // 64-byte KeystoneForwarder metadata
+
+        vm.prank(keystoneForwarder);
+        notifLog.onReport(metadata, report);
 
         string[] memory got = notifLog.getMatches(hash);
         assertEq(got.length, 2);
         assertEq(got[0], "ann-001");
     }
 
-    function test_notifLog_non_forwarder_reverts() public {
+    function test_notifLog_onReport_non_forwarder_reverts() public {
+        bytes memory report = abi.encode(keccak256("userkey"), new string[](0));
+        bytes memory metadata = new bytes(64);
+
+        vm.prank(alice);
+        vm.expectRevert(NotificationLog.NotForwarder.selector);
+        notifLog.onReport(metadata, report);
+    }
+
+    function test_notifLog_addMatchesDirect_and_retrieve() public {
         bytes32 hash = keccak256("userkey");
         string[] memory ids = new string[](1);
         ids[0] = "ann-001";
 
-        vm.prank(alice);
-        vm.expectRevert(NotificationLog.NotForwarder.selector);
-        notifLog.addMatches(hash, ids);
+        // owner (test contract) can use addMatchesDirect for testing
+        notifLog.addMatchesDirect(hash, ids);
+
+        string[] memory got = notifLog.getMatches(hash);
+        assertEq(got.length, 1);
     }
 
     function test_notifLog_clearMatches_by_owner() public {
@@ -208,8 +222,7 @@ contract WeaveRegistryTest is Test {
         string[] memory ids = new string[](1);
         ids[0] = "ann-001";
 
-        vm.prank(forwarder);
-        notifLog.addMatches(hash, ids);
+        notifLog.addMatchesDirect(hash, ids);
         // owner (this test contract) can clear — pass empty preimage
         notifLog.clearMatches(hash, "");
         assertEq(notifLog.getMatches(hash).length, 0);
@@ -221,11 +234,10 @@ contract WeaveRegistryTest is Test {
         string[] memory ids = new string[](1);
         ids[0] = "ann-002";
 
-        vm.prank(forwarder);
-        notifLog.addMatches(hash, ids);
+        notifLog.addMatchesDirect(hash, ids);
         // any address can clear by proving preimage
         vm.prank(alice);
-        notifLog.clearMatches(hash, spendPub); // proves ownership of slot
+        notifLog.clearMatches(hash, spendPub);
         assertEq(notifLog.getMatches(hash).length, 0);
     }
 
@@ -234,5 +246,12 @@ contract WeaveRegistryTest is Test {
         vm.prank(alice);
         vm.expectRevert(NotificationLog.NotForwarder.selector);
         notifLog.clearMatches(hash, "");
+    }
+
+    function test_notifLog_supportsInterface() public view {
+        // IReceiver: 0x35b16d3d
+        assertTrue(notifLog.supportsInterface(0x35b16d3d));
+        // ERC-165
+        assertTrue(notifLog.supportsInterface(0x01ffc9a7));
     }
 }

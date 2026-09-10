@@ -15,10 +15,10 @@ interface IENSEthRegistry {
 
 contract DeployWeave is Script {
     // ENSv2 Sepolia addresses (verified from ENS documentation)
-    address constant ENS_ETH_REGISTRY  = 0xbDc85dd5b15D7ecB354CD7cB6f2C50b4F2C4f0e2;
+    address constant ENS_ETH_REGISTRY  = 0xBDC85dD5b15D7ecb354cd7cb6f2c50b4f2c4F0E2;
 
-    // Replace after CRE workflow deployment
-    address constant CRE_FORWARDER_PLACEHOLDER = address(0xdead);
+    // Ethereum Sepolia KeystoneForwarder (CRE DON forwarder)
+    address constant KEYSTONE_FORWARDER = 0xF8344CFd5c43616a4366C34E3EEE75af79a74482;
 
     // namehash("weave.eth") — precomputed
     bytes32 constant WEAVE_ETH_NODE =
@@ -36,7 +36,7 @@ contract DeployWeave is Script {
         WeaveWildcardResolver resolver = new WeaveWildcardResolver();
         WeavePermissionedRegistry registry = new WeavePermissionedRegistry(address(resolver));
         WeaveRegistrar registrar = new WeaveRegistrar(address(registry), address(resolver));
-        NotificationLog notifLog = new NotificationLog(CRE_FORWARDER_PLACEHOLDER);
+        NotificationLog notifLog = new NotificationLog(KEYSTONE_FORWARDER);
 
         // Wire internal roles
         registry.grantRegistrar(address(registrar));
@@ -44,8 +44,9 @@ contract DeployWeave is Script {
 
         // Wire resolver into ENSv2 ETHRegistry so *.weave.eth resolves via ENSIP-10.
         // Requires deployer to own weave.eth on Sepolia ENSv2.
-        IENSEthRegistry ensRegistry = IENSEthRegistry(ENS_ETH_REGISTRY);
-        ensRegistry.setResolver(WEAVE_ETH_NODE, address(resolver));
+        // TODO: Uncomment once weave.eth ownership is confirmed on Sepolia ENSv2.
+        // IENSEthRegistry ensRegistry = IENSEthRegistry(ENS_ETH_REGISTRY);
+        // ensRegistry.setResolver(WEAVE_ETH_NODE, address(resolver));
 
         vm.stopBroadcast();
 

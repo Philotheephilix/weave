@@ -36,3 +36,5 @@ app/.env.production
 *.env.*
 !*.env.example
 node_modules/
+cre-workflow/cre-workflow
+cre-workflow/*.wasm

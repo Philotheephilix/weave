@@ -1,8 +1,8 @@
 {
   "schedule": "*/5 * * * *",
-  "rpc_endpoint": "https://sepolia.infura.io/v3/PUBLIC_KEY",
-  "announcer_contract": "",
-  "notification_contract": "",
+  "announcer_contract": "0x55649E01B5Df198D18D95b5cc5051630cfD45564",
+  "notification_contract": "0xE0E923359d2Af2Ce48a23128F206EC7f67fEad39",
+  "gas_limit": 500000,
   "secret_ids": {
     "spending_key": "weave_spending_key_hex"
   },
