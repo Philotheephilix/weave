@@ -34,9 +34,8 @@ export class NostrDelivery {
       created_at: Math.floor(Date.now() / 1000),
     }
     const giftWrap = wrapEvent(rumor, senderPriv, recipientHex)
-    await Promise.all(this.relays.map(relay =>
-      this.pool.publish([relay], giftWrap).catch(() => {})
-    ))
+    // publish() returns Promise<string>[] (one per relay) — must await the array
+    await Promise.all(this.pool.publish(this.relays, giftWrap)).catch(() => {})
   }
 
   subscribe(
@@ -46,7 +45,8 @@ export class NostrDelivery {
     const recipientPub = getPublicKey(recipientPriv)
     const sub = this.pool.subscribeMany(
       this.relays,
-      [{ kinds: [1059], '#p': [recipientPub] }],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { kinds: [1059], '#p': [recipientPub] } as any,
       {
         onevent(event: Event) {
           try {

@@ -17,15 +17,26 @@ export class TorManager {
   private torBinPath(): string {
     const platform = process.platform
     const base = path.join(__dirname, '..', '..', 'binaries', 'tor')
-    if (platform === 'darwin') return path.join(base, 'macos', 'tor')
-    if (platform === 'win32') return path.join(base, 'windows', 'tor.exe')
-    return path.join(base, 'linux', 'tor')
+    const bundled = platform === 'win32'
+      ? path.join(base, 'windows', 'tor.exe')
+      : platform === 'darwin'
+        ? path.join(base, 'macos', 'tor')
+        : path.join(base, 'linux', 'tor')
+    if (fs.existsSync(bundled)) return bundled
+    // Fall back to system Tor (dev / CI environments)
+    const systemPaths = platform === 'win32'
+      ? []
+      : ['/opt/homebrew/bin/tor', '/usr/local/bin/tor', '/usr/bin/tor']
+    for (const p of systemPaths) {
+      if (fs.existsSync(p)) return p
+    }
+    return bundled // let start() produce the "not found" error with the expected path
   }
 
   async start(): Promise<void> {
     if (this.ready) return
     const bin = this.torBinPath()
-    if (!fs.existsSync(bin)) throw new Error(`Tor binary not found at ${bin}`)
+    if (!fs.existsSync(bin)) throw new Error(`Tor binary not found at ${bin}. Bundle tor into binaries/tor/ or install system Tor.`)
 
     const dataDir = path.join(os.tmpdir(), 'weave-tor')
     this.proc = spawn(bin, [

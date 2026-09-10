@@ -29,14 +29,14 @@ export function registerIpcHandlers(
 
   ipcMain.handle('weave:dht:announce', (_e, onionAddress: string) => {
     if (!/^[a-z2-7]{56}\.onion$/.test(onionAddress)) return
-    dht.announce(identity.viewPub, onionAddress)
+    dht.announce(identity.viewPriv, identity.viewPub, onionAddress)
   })
 
   // Lookup can only decrypt records for the local identity (DHT values are encrypted to our viewPub).
   ipcMain.handle('weave:dht:lookup', async () => {
     return new Promise<string | null>((resolve) => {
       const timer = setTimeout(() => resolve(null), 5000)
-      dht.lookup(identity.viewPub, identity.viewPriv, (onion) => {
+      dht.lookup(identity.viewPriv, (onion) => {
         clearTimeout(timer)
         resolve(onion)
       })

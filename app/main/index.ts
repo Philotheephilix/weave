@@ -17,7 +17,7 @@ async function bootstrap(): Promise<void> {
   await Promise.all([tor.start(), dht.start()])
 
   const onion = await tor.createOnionService(3000)
-  dht.announce(identity.viewPub, onion.onionAddress)
+  dht.announce(identity.viewPriv, identity.viewPub, onion.onionAddress)
 
   registerIpcHandlers(tor, dht, nostr, idMgr, identity)
 
