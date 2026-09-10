@@ -148,6 +148,22 @@ func ecdhSecp256k1(scalar []byte, compressedPub []byte) ([]byte, error) {
 	return result, nil
 }
 
+// deriveSpendPub returns the 33-byte compressed secp256k1 public key for a private scalar.
+func deriveSpendPub(priv []byte) []byte {
+	k := new(big.Int).SetBytes(priv)
+	k.Mod(k, secp256k1N)
+	pt := scalarMul(k, ecPoint{secp256k1Gx, secp256k1Gy})
+	out := make([]byte, 33)
+	if pt.y.Bit(0) == 0 {
+		out[0] = 0x02
+	} else {
+		out[0] = 0x03
+	}
+	xb := pt.x.Bytes()
+	copy(out[1+32-len(xb):], xb)
+	return out
+}
+
 // computeStealthAddress returns the Ethereum address from an ERC-5564 shared secret.
 // NOTE: uses sha256 as stand-in for keccak256 — consistent across TEE scanner and client.
 // Replace with keccak256 before mainnet.

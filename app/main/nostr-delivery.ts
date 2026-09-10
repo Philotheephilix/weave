@@ -3,8 +3,8 @@
  * Wraps encrypted message in a gift-wrap event so the outer envelope
  * reveals nothing about sender, recipient, or content.
  */
-import { finalizeEvent, generateSecretKey, getPublicKey, SimplePool } from 'nostr-tools'
-import { Seal, GiftWrap } from 'nostr-tools/nip59'
+import { generateSecretKey, getPublicKey, SimplePool } from 'nostr-tools'
+import { wrapEvent, unwrapEvent } from 'nostr-tools/nip59'
 import type { Event } from 'nostr-tools'
 
 const DEFAULT_RELAYS = [
@@ -33,9 +33,7 @@ export class NostrDelivery {
       tags: [['p', recipientNpub]],
       created_at: Math.floor(Date.now() / 1000),
     }
-    const seal = Seal.wrap(rumor, senderPriv, recipientNpub)
-    const ephKey = generateSecretKey()
-    const giftWrap = GiftWrap.wrap(seal, ephKey, recipientNpub)
+    const giftWrap = wrapEvent(rumor, senderPriv, recipientNpub)
     await Promise.all(this.relays.map(relay =>
       this.pool.publish([relay], giftWrap).catch(() => {})
     ))
@@ -52,9 +50,7 @@ export class NostrDelivery {
       {
         onevent(event: Event) {
           try {
-            const unwrapped = GiftWrap.unwrap(event, recipientPriv)
-            const rumor = Seal.unwrap(unwrapped, recipientPriv)
-            const fromTag = rumor.tags?.find((t: string[]) => t[0] === 'p')
+            const rumor = unwrapEvent(event, recipientPriv)
             onMessage(rumor.pubkey ?? '', rumor.content ?? '')
           } catch {
             // malformed or not for us

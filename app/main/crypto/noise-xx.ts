@@ -63,9 +63,8 @@ export class NoiseXXSession {
     this.role = role
     this.staticPriv = staticPriv ?? randomBytes(32)
     this.staticPub = x25519.getPublicKey(this.staticPriv)
-    const h = sha256(PROTOCOL_NAME)
-    this.h = h
-    this.ck = h
+    this.h = sha256(PROTOCOL_NAME)
+    this.ck = this.h
   }
 
   get handshakeComplete(): boolean { return this.done }
@@ -88,8 +87,8 @@ export class NoiseXXSession {
 
   // → e
   private _writeMsg1(): Uint8Array {
-    this.ephPriv = randomBytes(32) as Uint8Array
-    this.ephPub = x25519.getPublicKey(this.ephPriv) as Uint8Array
+    this.ephPriv = randomBytes(32)
+    this.ephPub = x25519.getPublicKey(this.ephPriv)
     this.h = mixHash(this.h, this.ephPub)
     this.step = 1
     return this.ephPub
@@ -103,14 +102,14 @@ export class NoiseXXSession {
 
   // ← e, ee, s, es
   private _writeMsg2(): Uint8Array {
-    this.ephPriv = randomBytes(32) as Uint8Array
-    this.ephPub = x25519.getPublicKey(this.ephPriv) as Uint8Array
+    this.ephPriv = randomBytes(32)
+    this.ephPub = x25519.getPublicKey(this.ephPriv)
     this.h = mixHash(this.h, this.ephPub);
-    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteEphPub) as Uint8Array)
+    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteEphPub))
     this.n = 0
     const encS = aead(this.k, this.n++, this.h, this.staticPub)
     this.h = mixHash(this.h, encS);
-    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.staticPriv, this.remoteEphPub) as Uint8Array)
+    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.staticPriv, this.remoteEphPub))
     this.n = 0
     const encPayload = aead(this.k, this.n++, this.h, EMPTY)
     this.h = mixHash(this.h, encPayload)
@@ -122,12 +121,12 @@ export class NoiseXXSession {
     let off = 0
     this.remoteEphPub = msg.slice(off, off + 32); off += 32
     this.h = mixHash(this.h, this.remoteEphPub);
-    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteEphPub) as Uint8Array)
+    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteEphPub))
     this.n = 0
     const encS = msg.slice(off, off + 48); off += 48 // 32 + 16 tag
-    this.remoteStaticPub = aeadDecrypt(this.k, this.n++, this.h, encS) as Uint8Array
+    this.remoteStaticPub = aeadDecrypt(this.k, this.n++, this.h, encS)
     this.h = mixHash(this.h, encS);
-    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteStaticPub) as Uint8Array)
+    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteStaticPub))
     this.n = 0
     const encPayload = msg.slice(off); off = msg.length
     aeadDecrypt(this.k, this.n++, this.h, encPayload)
@@ -139,7 +138,7 @@ export class NoiseXXSession {
   private _writeMsg3(): Uint8Array {
     const encS = aead(this.k, this.n++, this.h, this.staticPub)
     this.h = mixHash(this.h, encS);
-    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.staticPriv, this.remoteEphPub) as Uint8Array)
+    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.staticPriv, this.remoteEphPub))
     this.n = 0
     const encPayload = aead(this.k, this.n++, this.h, EMPTY)
     this.h = mixHash(this.h, encPayload)
@@ -151,9 +150,9 @@ export class NoiseXXSession {
   private _readMsg3(msg: Uint8Array): void {
     let off = 0
     const encS = msg.slice(off, off + 48); off += 48
-    this.remoteStaticPub = aeadDecrypt(this.k, this.n++, this.h, encS) as Uint8Array
+    this.remoteStaticPub = aeadDecrypt(this.k, this.n++, this.h, encS)
     this.h = mixHash(this.h, encS);
-    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteStaticPub) as Uint8Array)
+    [this.ck, this.k] = mixKey(this.ck, x25519.getSharedSecret(this.ephPriv, this.remoteStaticPub))
     this.n = 0
     const encPayload = msg.slice(off)
     aeadDecrypt(this.k, this.n++, this.h, encPayload)

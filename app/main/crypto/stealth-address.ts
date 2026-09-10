@@ -20,21 +20,12 @@ export interface StealthResult {
   ephemeralPub: Uint8Array
 }
 
-export function computeStealthAddress(
-  meta: MetaAddress,
-  ephemeralPriv: Uint8Array,
-): StealthResult {
+export function computeStealthAddress(meta: MetaAddress, ephemeralPriv: Uint8Array): StealthResult {
   const ephemeralPub = secp256k1.getPublicKey(ephemeralPriv, true)
-  const sharedSecret = ecdhSecp256k1(ephemeralPriv, meta.viewPub)
-  const h = sha256(sharedSecret)
-  const hScalar = BigInt('0x' + Buffer.from(h).toString('hex'))
-
-  const spendPoint = secp256k1.ProjectivePoint.fromHex(meta.spendPub)
-  const hG = secp256k1.ProjectivePoint.BASE.multiply(hScalar)
-  const stealthPoint = spendPoint.add(hG)
-
-  const addr = _pointToAddress(stealthPoint)
-  return { stealthAddress: addr, ephemeralPub }
+  const hScalar = BigInt('0x' + Buffer.from(sha256(ecdhSecp256k1(ephemeralPriv, meta.viewPub))).toString('hex'))
+  const stealthPoint = secp256k1.ProjectivePoint.fromHex(meta.spendPub)
+    .add(secp256k1.ProjectivePoint.BASE.multiply(hScalar))
+  return { stealthAddress: _pointToAddress(stealthPoint), ephemeralPub }
 }
 
 export function checkStealthAddress(
@@ -43,14 +34,9 @@ export function checkStealthAddress(
   ephemeralPub: Uint8Array,
   stealthAddress: string,
 ): boolean {
-  const sharedSecret = ecdhSecp256k1(viewPriv, ephemeralPub)
-  const h = sha256(sharedSecret)
-  const hScalar = BigInt('0x' + Buffer.from(h).toString('hex'))
-
-  const spendPoint = secp256k1.ProjectivePoint.fromHex(spendPub)
-  const hG = secp256k1.ProjectivePoint.BASE.multiply(hScalar)
-  const candidate = spendPoint.add(hG)
-
+  const hScalar = BigInt('0x' + Buffer.from(sha256(ecdhSecp256k1(viewPriv, ephemeralPub))).toString('hex'))
+  const candidate = secp256k1.ProjectivePoint.fromHex(spendPub)
+    .add(secp256k1.ProjectivePoint.BASE.multiply(hScalar))
   return _pointToAddress(candidate).toLowerCase() === stealthAddress.toLowerCase()
 }
 

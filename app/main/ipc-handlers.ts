@@ -8,7 +8,6 @@ import { DHTDiscovery } from './dht-discovery'
 import { NostrDelivery } from './nostr-delivery'
 import { IdentityManager, createIdentity, WeaveIdentity } from './identity-manager'
 import { computeStealthAddress } from './crypto/stealth-address'
-import { NoiseXXSession } from './crypto/noise-xx'
 
 export function registerIpcHandlers(
   tor: TorManager,
@@ -33,14 +32,15 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle('weave:dht:announce', (_e, onionAddress: string) => {
+    if (!/^[a-z2-7]{56}\.onion$/.test(onionAddress)) return
     dht.announce(identity.viewPub, onionAddress)
   })
 
-  ipcMain.handle('weave:dht:lookup', async (_e, viewPubHex: string) => {
-    const viewPub = Buffer.from(viewPubHex, 'hex')
+  // Lookup can only decrypt records for the local identity (DHT values are encrypted to our viewPub).
+  ipcMain.handle('weave:dht:lookup', async () => {
     return new Promise<string | null>((resolve) => {
       const timer = setTimeout(() => resolve(null), 5000)
-      dht.lookup(viewPub, identity.viewPriv, (onion) => {
+      dht.lookup(identity.viewPub, identity.viewPriv, (onion) => {
         clearTimeout(timer)
         resolve(onion)
       })

@@ -31,16 +31,16 @@ export class TorManager {
     const bin = this.torBinPath()
     if (!fs.existsSync(bin)) throw new Error(`Tor binary not found at ${bin}`)
 
+    const dataDir = path.join(require('os').tmpdir(), 'weave-tor')
     this.proc = spawn(bin, [
       '--SocksPort', '9050',
       '--ControlPort', '9051',
-      '--CookieAuthentication', '0',
-      '--HashedControlPassword', '',
-      '--DataDirectory', path.join(require('os').tmpdir(), 'weave-tor'),
+      '--CookieAuthentication', '1',
+      '--DataDirectory', dataDir,
     ], { stdio: ['ignore', 'pipe', 'pipe'] })
 
     await this._waitForReady()
-    await this._authenticate()
+    await this._authenticate(dataDir)
     this.ready = true
   }
 
@@ -77,8 +77,11 @@ export class TorManager {
     })
   }
 
-  private async _authenticate(): Promise<void> {
-    const reply = await this._controlCmd('AUTHENTICATE ""')
+  private async _authenticate(dataDir: string): Promise<void> {
+    // Cookie auth: read the cookie file Tor wrote, send as hex.
+    const cookiePath = path.join(dataDir, 'control_auth_cookie')
+    const cookie = fs.readFileSync(cookiePath).toString('hex')
+    const reply = await this._controlCmd(`AUTHENTICATE ${cookie}`)
     if (!reply.startsWith('250')) throw new Error(`Tor auth failed: ${reply}`)
   }
 

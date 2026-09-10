@@ -39,12 +39,10 @@ export class DHTDiscovery {
   }
 
   private _encrypt(viewPub: Uint8Array, payload: DHTValue): Uint8Array {
-    const ephPriv = randomBytes(32) as Uint8Array
-    const sharedX = ecdhSecp256k1(ephPriv, viewPub)
-    const key = sharedX.slice(0, 32)
-    const nonce = randomBytes(12) as Uint8Array
-    const pt = new TextEncoder().encode(JSON.stringify(payload))
-    const ct = chacha20poly1305(key, nonce).encrypt(pt)
+    const ephPriv = randomBytes(32)
+    const nonce = randomBytes(12)
+    const key = ecdhSecp256k1(ephPriv, viewPub).slice(0, 32)
+    const ct = chacha20poly1305(key, nonce).encrypt(new TextEncoder().encode(JSON.stringify(payload)))
     const ephPub = secp256k1.getPublicKey(ephPriv, true)
     // layout: 33-byte ephPub || 12-byte nonce || ciphertext
     const out = new Uint8Array(33 + 12 + ct.length)
@@ -56,7 +54,7 @@ export class DHTDiscovery {
 
   private _decrypt(viewPriv: Uint8Array, blob: Uint8Array): DHTValue | null {
     try {
-      if (blob.length < 46) return null
+      if (blob.length < 61) return null // 33 ephPub + 12 nonce + 16 min tag
       const ephPub = blob.slice(0, 33)
       const nonce = blob.slice(33, 45)
       const ct = blob.slice(45)

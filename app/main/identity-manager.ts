@@ -51,8 +51,9 @@ const WILDCARD_RESOLVER_ABI = [
 ] as const
 
 function _encodeDnsName(label: string): Uint8Array {
+  if (!label || label.includes('.') || label.length > 63) throw new Error(`invalid label: ${label}`)
   // label.weave.eth → \x{len}label\x05weave\x03eth\x00
-  const parts = [`${label}`, 'weave', 'eth']
+  const parts = [label, 'weave', 'eth']
   const bufs = parts.map(p => {
     const b = new TextEncoder().encode(p)
     return Uint8Array.from([b.length, ...b])
@@ -61,6 +62,7 @@ function _encodeDnsName(label: string): Uint8Array {
   const out = new Uint8Array(total)
   let off = 0
   for (const b of bufs) { out.set(b, off); off += b.length }
+  out[off] = 0 // explicit null terminator
   return out
 }
 
@@ -82,14 +84,14 @@ function _encodeTextCalldata(key: string): `0x${string}` {
 export function createIdentity(): WeaveIdentity {
   const viewPriv  = secp256k1.utils.randomPrivateKey()
   const spendPriv = secp256k1.utils.randomPrivateKey()
-  const noisePriv = randomBytes(32) as Uint8Array
+  const noisePriv = randomBytes(32)
   return {
     viewPriv,
     viewPub:   secp256k1.getPublicKey(viewPriv, true),
     spendPriv,
     spendPub:  secp256k1.getPublicKey(spendPriv, true),
     noisePriv,
-    noisePub:  x25519.getPublicKey(noisePriv) as Uint8Array,
+    noisePub:  x25519.getPublicKey(noisePriv),
   }
 }
 
@@ -118,10 +120,11 @@ export class IdentityManager {
     }
 
     if (!results['network.onion.v3']) return null
+    const strip = (s: string) => s.startsWith('0x') ? s.slice(2) : s
     return {
-      viewPub:      Buffer.from(results['crypto.stealth.view']  ?? '', 'hex'),
-      spendPub:     Buffer.from(results['crypto.stealth.spend'] ?? '', 'hex'),
-      noisePub:     Buffer.from(results['crypto.x25519']        ?? '', 'hex'),
+      viewPub:      Buffer.from(strip(results['crypto.stealth.view']  ?? ''), 'hex'),
+      spendPub:     Buffer.from(strip(results['crypto.stealth.spend'] ?? ''), 'hex'),
+      noisePub:     Buffer.from(strip(results['crypto.x25519']        ?? ''), 'hex'),
       onionAddress: results['network.onion.v3'],
       nostrPub:     results['social.nostr.pubkey'] ?? '',
     }
@@ -129,15 +132,13 @@ export class IdentityManager {
 
   async pollNotificationLog(spendPub: Uint8Array): Promise<string[]> {
     if (!ADDRESSES.NotificationLog) return []
-    const pubkeyHash = `0x${Buffer.from(sha256(spendPub)).toString('hex')}` as `0x${string}`
     try {
-      const matches = await this.client.readContract({
+      return await this.client.readContract({
         address: ADDRESSES.NotificationLog,
         abi: NOTIFICATION_LOG_ABI,
         functionName: 'getMatches',
-        args: [pubkeyHash],
+        args: [`0x${Buffer.from(sha256(spendPub)).toString('hex')}` as `0x${string}`],
       }) as string[]
-      return matches
     } catch {
       return []
     }

@@ -73,8 +73,10 @@ contract WeaveRegistrar {
         WeaveWildcardResolver.WeaveIdentity calldata identity
     ) external {
         bytes32 lh = keccak256(bytes(label));
-        // Only current token owner can update
         require(registry.ownerOf(lh) == msg.sender, "Not owner");
+        // Guests cannot update after expiry
+        (, , , uint64 expiry, ) = registry.records(lh);
+        require(expiry == 0 || expiry >= block.timestamp, "Registration expired");
         resolver.setIdentity(lh, identity);
     }
 }

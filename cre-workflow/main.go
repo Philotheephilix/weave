@@ -92,7 +92,9 @@ func runScan(config *Config, runtime cresdk.TeeRuntime) (string, error) {
 	// Step 4: cross TEE → DON boundary; only non-sensitive output
 	donRuntime := runtime.UsingTheDons()
 
-	pubkeyHash := sha256.Sum256(spendingKey)
+	// Derive spend public key so the hash matches what the client computes from spendPub.
+	spendPub := deriveSpendPub(spendingKey)
+	pubkeyHash := sha256.Sum256(spendPub)
 	payload, err := json.Marshal(struct {
 		UserPubkeyHash [32]byte `json:"userPubkeyHash"`
 		MatchedIDs     []string `json:"matchedIds"`
