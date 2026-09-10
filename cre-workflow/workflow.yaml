@@ -1,0 +1,2 @@
+name: weave-stealth-scanner
+cronSchedule: "*/5 * * * *"

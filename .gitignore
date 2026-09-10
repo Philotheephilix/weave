@@ -1,0 +1,38 @@
+# ---- scripts (temp / dev only) ----
+scripts/
+
+# ---- docs (markdown) ----
+*.md
+docs/
+idea.md
+
+# ---- Foundry / contracts ----
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/.env
+contracts/lib/
+
+# ---- CRE workflow ----
+cre-workflow/*.wasm
+cre-workflow/vendor/
+
+# ---- Electron / Next.js app ----
+app/node_modules/
+app/.next/
+app/out/
+app/dist/
+app/.env
+app/.env.local
+app/.env.production
+
+# ---- Landing page ----
+# (no ignores — plain HTML, committed as-is)
+
+# ---- General ----
+.DS_Store
+*.log
+*.env
+*.env.*
+!*.env.example
+node_modules/

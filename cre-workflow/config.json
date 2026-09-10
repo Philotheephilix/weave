@@ -1,0 +1,10 @@
+{
+  "schedule": "*/5 * * * *",
+  "rpc_endpoint": "https://sepolia.infura.io/v3/PUBLIC_KEY",
+  "announcer_contract": "",
+  "notification_contract": "",
+  "secret_ids": {
+    "spending_key": "weave_spending_key_hex"
+  },
+  "last_scanned_block": 0
+}

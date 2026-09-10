@@ -1,0 +1,5 @@
+name: weave-stealth-scanner
+version: "1.0.0"
+description: >
+  Confidential ERC-5564 stealth address scanner for Weave.
+  Spending key never leaves the TEE enclave.
