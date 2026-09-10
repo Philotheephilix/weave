@@ -29,21 +29,32 @@ var (
 
 type ecPoint struct{ x, y *big.Int }
 
+// infinity sentinel — ecPoint with nil fields represents the point at infinity.
+func isInfinity(pt ecPoint) bool { return pt.x == nil }
+
 func pointAdd(p1, p2 ecPoint) ecPoint {
-	if p1.x == nil {
+	if isInfinity(p1) {
 		return p2
 	}
-	if p2.x == nil {
+	if isInfinity(p2) {
 		return p1
 	}
 	p := secp256k1P
+	// P == Q: use doubling formula
+	if p1.x.Cmp(p2.x) == 0 {
+		if p1.y.Cmp(p2.y) == 0 {
+			return pointDouble(p1)
+		}
+		// P == -Q: result is point at infinity
+		return ecPoint{}
+	}
 	dx := new(big.Int).Sub(p2.x, p1.x)
 	dy := new(big.Int).Sub(p2.y, p1.y)
 	dx.Mod(dx, p)
 	dy.Mod(dy, p)
 	inv := new(big.Int).ModInverse(dx, p)
 	if inv == nil {
-		return ecPoint{}
+		return ecPoint{} // should not happen after the checks above
 	}
 	lam := new(big.Int).Mul(dy, inv)
 	lam.Mod(lam, p)
@@ -59,7 +70,7 @@ func pointAdd(p1, p2 ecPoint) ecPoint {
 }
 
 func pointDouble(pt ecPoint) ecPoint {
-	if pt.x == nil {
+	if isInfinity(pt) {
 		return pt
 	}
 	p := secp256k1P
@@ -87,7 +98,10 @@ func pointDouble(pt ecPoint) ecPoint {
 }
 
 func scalarMul(k *big.Int, pt ecPoint) ecPoint {
-	result := ecPoint{}
+	result := ecPoint{} // start at infinity
+	if isInfinity(pt) {
+		return result
+	}
 	addend := ecPoint{new(big.Int).Set(pt.x), new(big.Int).Set(pt.y)}
 	for i := 0; i < k.BitLen(); i++ {
 		if k.Bit(i) == 1 {
