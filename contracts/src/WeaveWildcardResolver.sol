@@ -63,6 +63,7 @@ contract WeaveWildcardResolver {
     {
         require(dnsName.length > 1, "empty name");
         uint8 labelLen = uint8(dnsName[0]);
+        require(labelLen > 0, "empty label");
         require(dnsName.length >= 1 + labelLen, "malformed dnsName");
         bytes32 labelHash = keccak256(dnsName[1:1 + labelLen]);
 

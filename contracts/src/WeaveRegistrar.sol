@@ -33,14 +33,16 @@ contract WeaveRegistrar {
         owner = newOwner;
     }
 
+    // Only contract owner can register — prevents arbitrary self-registration
     function registerMember(
         string calldata label,
+        address tokenOwner,
         WeaveWildcardResolver.WeaveIdentity calldata identity
-    ) external {
+    ) external onlyOwner {
         bytes32 lh = keccak256(bytes(label));
-        registry.registerMember(label, msg.sender);
+        registry.registerMember(label, tokenOwner);
         resolver.setIdentity(lh, identity);
-        emit Registered(label, msg.sender, "member");
+        emit Registered(label, tokenOwner, "member");
     }
 
     function registerGuest(
@@ -48,7 +50,7 @@ contract WeaveRegistrar {
         address guestAddr,
         uint64 durationSeconds,
         WeaveWildcardResolver.WeaveIdentity calldata identity
-    ) external {
+    ) external onlyOwner {
         bytes32 lh = keccak256(bytes(label));
         registry.registerGuest(label, guestAddr, durationSeconds);
         resolver.setIdentity(lh, identity);
@@ -57,12 +59,13 @@ contract WeaveRegistrar {
 
     function registerOperator(
         string calldata label,
+        address tokenOwner,
         WeaveWildcardResolver.WeaveIdentity calldata identity
-    ) external {
+    ) external onlyOwner {
         bytes32 lh = keccak256(bytes(label));
-        registry.registerOperator(label, msg.sender);
+        registry.registerOperator(label, tokenOwner);
         resolver.setIdentity(lh, identity);
-        emit Registered(label, msg.sender, "operator");
+        emit Registered(label, tokenOwner, "operator");
     }
 
     function updateIdentity(

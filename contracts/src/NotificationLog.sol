@@ -52,8 +52,10 @@ contract NotificationLog {
         return _matches[userPubkeyHash];
     }
 
-    /// @notice Client clears its own slot after processing
+    /// @notice Client clears its own slot after processing.
+    ///         Only the CRE forwarder or owner may clear (prevents griefing).
     function clearMatches(bytes32 userPubkeyHash) external {
+        if (msg.sender != creForwarder && msg.sender != owner) revert NotForwarder();
         delete _matches[userPubkeyHash];
     }
 }

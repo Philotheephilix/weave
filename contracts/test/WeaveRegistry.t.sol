@@ -28,6 +28,8 @@ contract WeaveRegistryTest is Test {
         // wire up roles
         registry.grantRegistrar(address(registrar));
         resolver.authorizeSetterRole(address(registrar), true);
+        // test contract is also a registrar so it can call grantRoles/revokeRoles directly
+        registry.grantRegistrar(address(this));
 
         dummyIdentity = WeaveWildcardResolver.WeaveIdentity({
             stealthViewKey:  hex"02aabbccdd",
@@ -42,8 +44,8 @@ contract WeaveRegistryTest is Test {
     // ── Registration ──────────────────────────────────────────────────────────
 
     function test_registerMember_mintsToken() public {
-        vm.prank(alice);
-        registrar.registerMember("alice", dummyIdentity);
+        // registerMember is onlyOwner; test contract is the deployer/owner
+        registrar.registerMember("alice", alice, dummyIdentity);
 
         bytes32 lh = keccak256(bytes("alice"));
         assertEq(registry.ownerOf(lh), alice);
@@ -52,7 +54,6 @@ contract WeaveRegistryTest is Test {
     }
 
     function test_registerGuest_setsExpiry() public {
-        vm.prank(alice);
         registrar.registerGuest("bob", bob, 7 days, dummyIdentity);
 
         bytes32 lh = keccak256(bytes("bob"));
@@ -61,8 +62,7 @@ contract WeaveRegistryTest is Test {
     }
 
     function test_registerOperator_transferable() public {
-        vm.prank(alice);
-        registrar.registerOperator("relay1", dummyIdentity);
+        registrar.registerOperator("relay1", alice, dummyIdentity);
 
         bytes32 lh = keccak256(bytes("relay1"));
         (, , uint256 roles, , ) = registry.recordData(lh);
@@ -70,21 +70,17 @@ contract WeaveRegistryTest is Test {
     }
 
     function test_register_duplicate_reverts() public {
-        vm.prank(alice);
-        registrar.registerMember("alice", dummyIdentity);
-        vm.prank(alice);
+        registrar.registerMember("alice", alice, dummyIdentity);
         vm.expectRevert(WeavePermissionedRegistry.AlreadyRegistered.selector);
-        registrar.registerMember("alice", dummyIdentity);
+        registrar.registerMember("alice", alice, dummyIdentity);
     }
 
     function test_register_after_expiry_succeeds() public {
-        vm.prank(alice);
         registrar.registerGuest("temp", bob, 1 days, dummyIdentity);
 
         // advance past expiry
         vm.warp(block.timestamp + 2 days);
 
-        vm.prank(alice);
         registrar.registerGuest("temp", alice, 7 days, dummyIdentity);
         bytes32 lh = keccak256(bytes("temp"));
         assertEq(registry.ownerOf(lh), alice);
@@ -93,8 +89,7 @@ contract WeaveRegistryTest is Test {
     // ── Soulbound ─────────────────────────────────────────────────────────────
 
     function test_member_token_soulbound() public {
-        vm.prank(alice);
-        registrar.registerMember("alice", dummyIdentity);
+        registrar.registerMember("alice", alice, dummyIdentity);
 
         // member has no ROLE_CAN_TRANSFER_ADMIN
         bytes32 lh = keccak256(bytes("alice"));
@@ -104,23 +99,34 @@ contract WeaveRegistryTest is Test {
 
     // ── Unregister ────────────────────────────────────────────────────────────
 
-    function test_unregister_burns_token() public {
-        vm.prank(alice);
-        registrar.registerMember("alice", dummyIdentity);
+    function test_unregister_burns_expired_token() public {
+        // Register as guest so it can be forcibly unregistered before expiry (GUEST_ROLES only)
+        vm.prank(address(this)); // owner == test contract
+        registrar.registerGuest("tempguest", alice, 1 days, dummyIdentity);
 
-        bytes32 lh = keccak256(bytes("alice"));
+        bytes32 lh = keccak256(bytes("tempguest"));
         uint256 tid = registry.tokenId(lh);
 
-        registry.unregisterMember("alice");
+        // Warp past expiry
+        vm.warp(block.timestamp + 2 days);
+        registry.unregisterMember("tempguest");
+
         assertEq(registry.balanceOf(alice, tid), 0);
         assertEq(registry.ownerOf(lh), address(0));
+    }
+
+    function test_unregister_unexpired_member_reverts() public {
+        vm.prank(address(this));
+        registrar.registerMember("alice", alice, dummyIdentity);
+        // member token is non-expiring and not GUEST_ROLES — cannot be forcibly burned
+        vm.expectRevert("token not expired");
+        registry.unregisterMember("alice");
     }
 
     // ── Token regeneration on role changes ────────────────────────────────────
 
     function test_grantRoles_regenerates_tokenId() public {
-        vm.prank(alice);
-        registrar.registerMember("alice", dummyIdentity);
+        registrar.registerMember("alice", alice, dummyIdentity);
         bytes32 lh = keccak256(bytes("alice"));
         uint256 oldTid = registry.tokenId(lh);
 
@@ -133,8 +139,7 @@ contract WeaveRegistryTest is Test {
     }
 
     function test_revokeRoles_regenerates_tokenId() public {
-        vm.prank(alice);
-        registrar.registerMember("alice", dummyIdentity);
+        registrar.registerMember("alice", alice, dummyIdentity);
         bytes32 lh = keccak256(bytes("alice"));
         uint256 oldTid = registry.tokenId(lh);
 
@@ -147,8 +152,7 @@ contract WeaveRegistryTest is Test {
     // ── Wildcard Resolver ─────────────────────────────────────────────────────
 
     function test_resolver_setIdentity_and_resolve() public {
-        vm.prank(alice);
-        registrar.registerMember("alice", dummyIdentity);
+        registrar.registerMember("alice", alice, dummyIdentity);
 
         bytes32 lh = keccak256(bytes("alice"));
         // Build DNS-encoded name: \x05alice\x05weave\x03eth\x00
@@ -200,15 +204,22 @@ contract WeaveRegistryTest is Test {
         notifLog.addMatches(hash, ids);
     }
 
-    function test_notifLog_clearMatches() public {
+    function test_notifLog_clearMatches_by_owner() public {
         bytes32 hash = keccak256("userkey");
         string[] memory ids = new string[](1);
         ids[0] = "ann-001";
 
         vm.prank(forwarder);
         notifLog.addMatches(hash, ids);
+        // owner (this test contract) can clear
         notifLog.clearMatches(hash);
-
         assertEq(notifLog.getMatches(hash).length, 0);
+    }
+
+    function test_notifLog_clearMatches_non_owner_reverts() public {
+        bytes32 hash = keccak256("userkey");
+        vm.prank(alice);
+        vm.expectRevert(NotificationLog.NotForwarder.selector);
+        notifLog.clearMatches(hash);
     }
 }
