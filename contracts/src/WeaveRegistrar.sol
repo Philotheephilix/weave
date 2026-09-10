@@ -68,6 +68,13 @@ contract WeaveRegistrar {
         emit Registered(label, tokenOwner, "operator");
     }
 
+    // Owner override — needed for key compromise, abuse, or label reclamation.
+    // Regular unregisterMember requires expiry to have passed.
+    function forceUnregister(string calldata label) external onlyOwner {
+        registry.forceUnregister(label);
+        resolver.clearIdentity(keccak256(bytes(label)));
+    }
+
     function updateIdentity(
         string calldata label,
         WeaveWildcardResolver.WeaveIdentity calldata identity
@@ -75,7 +82,7 @@ contract WeaveRegistrar {
         bytes32 lh = keccak256(bytes(label));
         require(registry.ownerOf(lh) == msg.sender, "Not owner");
         // Guests cannot update after expiry
-        (, , , uint64 expiry, ) = registry.records(lh);
+        (, , , uint64 expiry, ) = registry.recordData(lh);
         require(expiry == 0 || expiry >= block.timestamp, "Registration expired");
         resolver.setIdentity(lh, identity);
     }

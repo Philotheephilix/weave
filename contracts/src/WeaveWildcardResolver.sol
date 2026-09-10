@@ -48,6 +48,11 @@ contract WeaveWildcardResolver {
         authorizedSetters[account] = grant;
     }
 
+    function clearIdentity(bytes32 labelHash) external {
+        if (!authorizedSetters[msg.sender] && msg.sender != owner) revert NotAuthorized();
+        delete identities[labelHash];
+    }
+
     /// @notice ENSv2 PermissionedResolver pattern: ROLE_SET_TEXT check
     function setIdentity(bytes32 labelHash, WeaveIdentity calldata identity) external {
         if (!authorizedSetters[msg.sender] && msg.sender != owner) revert NotAuthorized();

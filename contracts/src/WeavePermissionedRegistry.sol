@@ -172,6 +172,17 @@ contract WeavePermissionedRegistry {
         emit SubnameUnregistered(lh);
     }
 
+    // Owner escape hatch — bypasses expiry for key compromise / abuse cases.
+    function forceUnregister(string calldata label) external onlyOwner {
+        bytes32 lh = keccak256(bytes(label));
+        SubnameRecord storage r = records[lh];
+        if (r.owner == address(0)) revert NotRegistered();
+        _burn(r.owner, tokenIds[lh]);
+        delete records[lh];
+        delete tokenIds[lh];
+        emit SubnameUnregistered(lh);
+    }
+
     // ── Role management (each call regenerates tokenId) ───────────────────────
     function grantRoles(bytes32 labelHash, uint256 additional) external onlyRegistrar {
         SubnameRecord storage r = records[labelHash];
