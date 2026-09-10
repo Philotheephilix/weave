@@ -14,7 +14,9 @@ contracts/.env
 contracts/lib/
 
 # ---- CRE workflow ----
+cre-workflow/.env
 cre-workflow/*.wasm
+cre-workflow/binary.wasm
 cre-workflow/vendor/
 
 # ---- Electron / Next.js app ----
