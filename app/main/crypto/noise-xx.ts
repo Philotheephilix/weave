@@ -157,6 +157,7 @@ export class NoiseXXSession {
     this.n = 0
     const encPayload = msg.slice(off)
     aeadDecrypt(this.k, this.n++, this.h, encPayload)
+    this.h = mixHash(this.h, encPayload)
     this._split()
     this.step = 3
   }
@@ -185,7 +186,9 @@ export class NoiseXXSession {
 
   decrypt(frame: Uint8Array): Uint8Array {
     if (!this.done) throw new Error('handshake not complete')
+    if (frame.length < 2) throw new Error('frame too short')
     const len = new DataView(frame.buffer, frame.byteOffset).getUint16(0, false)
+    if (frame.length < 2 + len || len < 16) throw new Error(`invalid frame length ${len}`)
     const ct = frame.slice(2, 2 + len)
     const nonce = new Uint8Array(12)
     new DataView(nonce.buffer).setUint32(8, this.recvN++, false)
