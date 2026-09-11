@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import { ipcCallSignal, ipcCallOnSignal } from './ipc'
 
 const STUN_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -9,18 +10,6 @@ type SignalPayload =
   | { type: 'offer'; sdp: string }
   | { type: 'answer'; sdp: string }
   | { type: 'candidate'; candidate: RTCIceCandidateInit }
-
-declare global {
-  interface Window {
-    weave?: {
-      call?: {
-        signal: (args: { recipientLabel: string; signal: SignalPayload }) => Promise<{ ok: boolean; reason?: string }>
-        onSignal: (cb: (payload: { from: string; signal: SignalPayload }) => void) => () => void
-      }
-      [key: string]: unknown
-    }
-  }
-}
 
 export interface WebRTCHandle {
   connected: boolean
@@ -66,8 +55,8 @@ export function useWebRTC(): WebRTCHandle {
 
   const sendSignal = useCallback(async (signal: SignalPayload) => {
     const label = peerLabelRef.current
-    if (!label || !window.weave?.call?.signal) return
-    await window.weave.call.signal({ recipientLabel: label, signal })
+    if (!label) return
+    await ipcCallSignal({ recipientLabel: label, signal })
   }, [])
 
   const createPC = useCallback(() => {
@@ -101,8 +90,8 @@ export function useWebRTC(): WebRTCHandle {
     peerLabelRef.current = peerLabel
 
     // Subscribe to incoming signals first
-    if (window.weave?.call?.onSignal) {
-      const unsub = window.weave.call.onSignal(async ({ signal }) => {
+    {
+      const unsub = ipcCallOnSignal(async ({ signal }) => {
         const pc = pcRef.current
         if (!pc) return
         try {

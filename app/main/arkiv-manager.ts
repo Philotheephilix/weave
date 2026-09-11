@@ -1,14 +1,10 @@
 // app/main/arkiv-manager.ts
 //
 // Arkiv Network integration for persistent encrypted message storage.
+// Uses @arkiv-network/sdk 0.8 against the tiramisu testnet.
 //
-// @arkiv-network/sdk is not yet published to npm.
-// All methods are stubbed and return null/empty gracefully.
-// Gate: process.env.WEAVE_ARKIV_ENABLED === 'true' must be set to activate;
-// without it all methods no-op immediately.
-//
-// When the SDK becomes available, replace the stub body with the full
-// implementation from the docs (§5 Task 2).
+// SDK is loaded via dynamic import() inside init() so module-load failures
+// do not crash the Electron main process.
 
 import type { WrappedKey } from './crypto/channel-crypto.js'
 import {
@@ -41,59 +37,41 @@ export interface ChannelMemberRecord {
   role: string
 }
 
-// ── Feature flag ──────────────────────────────────────────────────────────────
-
-const ARKIV_ENABLED = process.env.WEAVE_ARKIV_ENABLED === 'true'
-
 // ── ArkivManager ──────────────────────────────────────────────────────────────
 
 export class ArkivManager {
-  // Attempt to load the SDK lazily. Will remain null if the package is absent.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private walletClient: any = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private publicClient: any = null
 
-  private blocksPerDay = 5760  // fallback: ~15 s blocks
-  private keyCache     = new Map<string, Uint8Array>()
+  private keyCache = new Map<string, Uint8Array>()
 
   constructor(private readonly spendPrivHex: `0x${string}`) {}
 
   async init(): Promise<void> {
-    if (!ARKIV_ENABLED) return
-
     try {
-      // Dynamic import so the absence of the package only throws here, not at
-      // module load time. If the SDK ships, this will resolve correctly.
-      const sdk = await import('@arkiv-network/sdk' as string)
+      // Dynamic import so startup is not blocked by an SDK import error.
+      const sdk = await import('@arkiv-network/sdk')
+      const { tiramisu } = await import('@arkiv-network/sdk/chains')
       const { http } = await import('viem')
       const { privateKeyToAccount } = await import('viem/accounts')
 
-      const tiramisu = sdk.tiramisu ?? sdk.chains?.tiramisu
-      const account  = privateKeyToAccount(this.spendPrivHex)
+      const { createPublicClient, createWalletClient } = sdk
 
-      this.walletClient = sdk.createWalletClient({
-        chain:     tiramisu,
+      const account = privateKeyToAccount(this.spendPrivHex)
+
+      this.walletClient = createWalletClient({
+        chain: tiramisu,
         transport: http(),
         account,
       })
-      this.publicClient = sdk.createPublicClient({
-        chain:     tiramisu,
+      this.publicClient = createPublicClient({
+        chain: tiramisu,
         transport: http(),
       })
-
-      // Calibrate blocks-per-day from chain timing
-      try {
-        const timing = await this.publicClient.request({
-          method: 'arkiv_getBlockTiming',
-          params: [],
-        })
-        if (timing?.blockDuration) {
-          this.blocksPerDay = Math.round(86400 / timing.blockDuration)
-        }
-      } catch { /* use default */ }
     } catch (err) {
-      console.warn('[arkiv] SDK unavailable — Arkiv persistence disabled:', err)
+      console.warn('[arkiv] SDK init failed — Arkiv persistence disabled:', err)
       this.walletClient = null
       this.publicClient = null
     }
@@ -114,21 +92,26 @@ export class ArkivManager {
     memberNoisePub: Uint8Array,
     adminNoisePriv: Uint8Array,
   ): Promise<void> {
-    if (!ARKIV_ENABLED || !this.walletClient) return
+    if (!this.walletClient) return
 
     try {
-      const wrapped  = wrapChannelKey(adminNoisePriv, memberNoisePub, K_channel)
-      const payload  = JSON.stringify(wrapped)
+      const { ExpirationTime, jsonToPayload } = await import('@arkiv-network/sdk')
+      const { str, u64 } = await import('@arkiv-network/sdk/attr')
+
+      const wrapped = wrapChannelKey(adminNoisePriv, memberNoisePub, K_channel)
+
       await this.walletClient.createEntity({
-        payload:     Buffer.from(payload),
+        payload: jsonToPayload(wrapped as unknown as object),
         contentType: 'application/json',
-        attributes: [
-          { name: 'type',       value: { str: 'channel-key' } },
-          { name: 'org',        value: { str: org } },
-          { name: 'channel',    value: { str: channel } },
-          { name: 'recipient',  value: { str: recipient } },
-          { name: 'keyVersion', value: { i32: keyVersion } },
-        ],
+        attributes: {
+          project: str('weave-v1'),
+          type: str('channel-key'),
+          org: str(org),
+          channel: str(channel),
+          recipient: str(recipient),
+          key_version: u64(BigInt(keyVersion)),
+        },
+        expires: ExpirationTime.fromDays(365),
       })
     } catch (err) {
       console.warn('[arkiv] storeChannelKey failed:', err)
@@ -146,18 +129,39 @@ export class ArkivManager {
     keyVersion: number,
     memberNoisePriv: Uint8Array,
   ): Promise<Uint8Array | null> {
-    if (!ARKIV_ENABLED || !this.publicClient) return null
+    if (!this.publicClient) return null
 
     const cacheKey = `${org}/${channel}/${keyVersion}`
     if (this.keyCache.has(cacheKey)) return this.keyCache.get(cacheKey)!
 
     try {
-      const query   = `type = str('channel-key') AND org = str('${org}') AND channel = str('${channel}') AND recipient = str('${recipientLabel}') AND keyVersion = i32(${keyVersion})`
-      const results = await this._query(query, { limit: 1 })
-      if (!results.length) return null
+      const { eq, and } = await import('@arkiv-network/sdk/query')
+      const { str, u64 } = await import('@arkiv-network/sdk/attr')
 
-      const wrapped: WrappedKey = JSON.parse(Buffer.from(results[0].payload as Uint8Array).toString('utf8'))
-      const K_channel            = unwrapChannelKey(memberNoisePriv, wrapped)
+      const result = await this.publicClient
+        .select({ key: true, payload: true, attributes: true })
+        .where(
+          and(
+            eq('project', str('weave-v1')),
+            eq('type', str('channel-key')),
+            eq('org', str(org)),
+            eq('channel', str(channel)),
+            eq('recipient', str(recipientLabel)),
+            eq('key_version', u64(BigInt(keyVersion))),
+          ),
+        )
+        .limit(1)
+        .fetch()
+
+      const entity = result.entities[0]
+      if (!entity) return null
+
+      // entity.toJson() decodes the Uint8Array payload as JSON
+      const wrapped: WrappedKey = entity.toJson != null
+        ? (entity.toJson() as WrappedKey)
+        : (JSON.parse(new TextDecoder().decode(entity.payload as Uint8Array)) as WrappedKey)
+
+      const K_channel = unwrapChannelKey(memberNoisePriv, wrapped)
       this.keyCache.set(cacheKey, K_channel)
       return K_channel
     } catch (err) {
@@ -166,20 +170,48 @@ export class ArkivManager {
     }
   }
 
-  /** Return the latest keyVersion stored for a recipient in a channel. -1 if none. */
+  /** Return the latest key_version stored for a recipient in a channel. -1 if none. */
   async getLatestKeyVersion(
     org: string,
     channel: string,
     recipientLabel: string,
   ): Promise<number> {
-    if (!ARKIV_ENABLED || !this.publicClient) return -1
+    if (!this.publicClient) return -1
 
     try {
-      const query   = `type = str('channel-key') AND org = str('${org}') AND channel = str('${channel}') AND recipient = str('${recipientLabel}')`
-      const results = await this._query(query, { limit: 100, orderBy: 'keyVersion DESC' })
-      if (!results.length) return -1
-      const attrs = results[0].attributes as Record<string, unknown>
-      return Number(attrs['keyVersion'] ?? 0)
+      const { eq, and } = await import('@arkiv-network/sdk/query')
+      const { str } = await import('@arkiv-network/sdk/attr')
+
+      let result = await this.publicClient
+        .select({ key: true, attributes: true })
+        .where(
+          and(
+            eq('project', str('weave-v1')),
+            eq('type', str('channel-key')),
+            eq('org', str(org)),
+            eq('channel', str(channel)),
+            eq('recipient', str(recipientLabel)),
+          ),
+        )
+        .limit(200)
+        .fetch()
+
+      type AttrEntity = { attributes: Record<string, { value: unknown }> }
+      const entities: AttrEntity[] = [...(result.entities as AttrEntity[])]
+      while (result.hasNextPage()) {
+        result = await result.next()
+        entities.push(...(result.entities as AttrEntity[]))
+      }
+
+      if (!entities.length) return -1
+
+      let max = -1
+      for (const e of entities) {
+        const raw = e.attributes?.['key_version']?.value
+        const v = raw !== undefined ? Number(raw) : -1
+        if (v > max) max = v
+      }
+      return max
     } catch (err) {
       console.warn('[arkiv] getLatestKeyVersion failed:', err)
       return -1
@@ -198,24 +230,27 @@ export class ArkivManager {
     plaintext: string,
     expiryDays = 30,
   ): Promise<string> {
-    if (!ARKIV_ENABLED || !this.walletClient) return ''
+    if (!this.walletClient) return ''
 
     try {
-      const enc     = encryptMessage(K_channel, new TextEncoder().encode(plaintext))
-      const payload = JSON.stringify({ ...enc, contentType: 'text/plain' })
+      const { ExpirationTime, jsonToPayload } = await import('@arkiv-network/sdk')
+      const { str, u64 } = await import('@arkiv-network/sdk/attr')
 
-      const entityKey = await this.walletClient.createEntity({
-        payload:           Buffer.from(payload),
-        contentType:       'application/json',
-        attributes: [
-          { name: 'type',       value: { str: 'message' } },
-          { name: 'org',        value: { str: org } },
-          { name: 'channel',    value: { str: channel } },
-          { name: 'sender',     value: { str: senderLabel } },
-          { name: 'timestamp',  value: { u64: BigInt(Date.now()) } },
-          { name: 'keyVersion', value: { i32: keyVersion } },
-        ],
-        expireAfterBlocks: this.blocksPerDay * expiryDays,
+      const enc = encryptMessage(K_channel, new TextEncoder().encode(plaintext))
+
+      const { entityKey } = await this.walletClient.createEntity({
+        payload: jsonToPayload({ ...enc, contentType: 'text/plain' }),
+        contentType: 'application/json',
+        attributes: {
+          project: str('weave-v1'),
+          type: str('channel-message'),
+          org: str(org),
+          channel: str(channel),
+          sender: str(senderLabel),
+          created_ms: u64(BigInt(Date.now())),
+          key_version: u64(BigInt(keyVersion)),
+        },
+        expires: ExpirationTime.fromDays(expiryDays),
       })
       return entityKey as string
     } catch (err) {
@@ -231,26 +266,52 @@ export class ArkivManager {
     sinceTimestamp: number,
     K_channel: Uint8Array,
   ): Promise<ArkivMessage[]> {
-    if (!ARKIV_ENABLED || !this.publicClient) return []
+    if (!this.publicClient) return []
 
     try {
-      const query      = `type = str('message') AND org = str('${org}') AND channel = str('${channel}') AND timestamp > u64(${sinceTimestamp})`
-      const rawEntities = await this._query(query, { limit: 200 })
-      const messages: ArkivMessage[] = []
+      const { eq, and, gte } = await import('@arkiv-network/sdk/query')
+      const { str, u64 } = await import('@arkiv-network/sdk/attr')
 
+      type RawE = {
+        key: unknown
+        payload: unknown
+        attributes: Record<string, { value: unknown }>
+        toJson?: () => unknown
+      }
+
+      let result = await this.publicClient
+        .select({ key: true, payload: true, attributes: true })
+        .where(
+          and(
+            eq('project', str('weave-v1')),
+            eq('type', str('channel-message')),
+            eq('org', str(org)),
+            eq('channel', str(channel)),
+            gte('created_ms', u64(BigInt(sinceTimestamp))),
+          ),
+        )
+        .limit(200)
+        .fetch()
+
+      const rawEntities: RawE[] = [...(result.entities as RawE[])]
+      while (result.hasNextPage()) {
+        result = await result.next()
+        rawEntities.push(...(result.entities as RawE[]))
+      }
+
+      const messages: ArkivMessage[] = []
       for (const entity of rawEntities) {
         try {
-          const parsed = JSON.parse(Buffer.from(entity.payload as Uint8Array).toString('utf8')) as {
-            iv: string; ciphertext: string; contentType: string
-          }
+          const parsed = entity.toJson != null
+            ? (entity.toJson() as { iv: string; ciphertext: string; contentType: string })
+            : (JSON.parse(new TextDecoder().decode(entity.payload as Uint8Array)) as { iv: string; ciphertext: string; contentType: string })
           if (parsed.contentType !== 'text/plain') continue
           const plain = decryptMessage(K_channel, parsed.iv, parsed.ciphertext)
-          const attrs = entity.attributes as Record<string, unknown>
           messages.push({
-            id:        String(entity.key),
-            sender:    String(attrs['sender'] ?? ''),
-            timestamp: Number(attrs['timestamp'] ?? 0),
-            text:      new TextDecoder().decode(plain),
+            id: String(entity.key),
+            sender: String(entity.attributes['sender']?.value ?? ''),
+            timestamp: Number(entity.attributes['created_ms']?.value ?? 0),
+            text: new TextDecoder().decode(plain),
           })
         } catch { /* skip undecryptable — different keyVersion or corrupt */ }
       }
@@ -274,25 +335,27 @@ export class ArkivManager {
     plaintext: string,
     expiryDays = 30,
   ): Promise<string> {
-    if (!ARKIV_ENABLED || !this.walletClient) return ''
+    if (!this.walletClient) return ''
 
     try {
-      const dmKey   = deriveDmKey(myNoisePriv, peerNoisePub)
-      const enc     = encryptMessage(dmKey, new TextEncoder().encode(plaintext))
-      const payload = JSON.stringify({ ...enc, contentType: 'text/plain' })
+      const { ExpirationTime, jsonToPayload } = await import('@arkiv-network/sdk')
+      const { str, u64 } = await import('@arkiv-network/sdk/attr')
 
-      const entityKey = await this.walletClient.createEntity({
-        payload:           Buffer.from(payload),
-        contentType:       'application/json',
-        attributes: [
-          { name: 'type',       value: { str: 'dm-message' } },
-          { name: 'org',        value: { str: org } },
-          { name: 'sender',     value: { str: senderLabel } },
-          { name: 'recipient',  value: { str: recipientLabel } },
-          { name: 'timestamp',  value: { u64: BigInt(Date.now()) } },
-          { name: 'keyVersion', value: { i32: 1 } },
-        ],
-        expireAfterBlocks: this.blocksPerDay * expiryDays,
+      const dmKey = deriveDmKey(myNoisePriv, peerNoisePub)
+      const enc = encryptMessage(dmKey, new TextEncoder().encode(plaintext))
+
+      const { entityKey } = await this.walletClient.createEntity({
+        payload: jsonToPayload({ ...enc, contentType: 'text/plain' }),
+        contentType: 'application/json',
+        attributes: {
+          project: str('weave-v1'),
+          type: str('dm-message'),
+          org: str(org),
+          sender: str(senderLabel),
+          recipient: str(recipientLabel),
+          created_ms: u64(BigInt(Date.now())),
+        },
+        expires: ExpirationTime.fromDays(expiryDays),
       })
       return entityKey as string
     } catch (err) {
@@ -310,40 +373,88 @@ export class ArkivManager {
     myNoisePriv: Uint8Array,
     peerNoisePub: Uint8Array,
   ): Promise<ArkivDM[]> {
-    if (!ARKIV_ENABLED || !this.publicClient) return []
+    if (!this.publicClient) return []
 
     try {
-      const dmKey       = deriveDmKey(myNoisePriv, peerNoisePub)
-      const qIncoming   = `type = str('dm-message') AND org = str('${org}') AND sender = str('${peerLabel}') AND recipient = str('${myLabel}') AND timestamp > u64(${sinceTimestamp})`
-      const qOutgoing   = `type = str('dm-message') AND org = str('${org}') AND sender = str('${myLabel}') AND recipient = str('${peerLabel}') AND timestamp > u64(${sinceTimestamp})`
+      const { eq, and, gte } = await import('@arkiv-network/sdk/query')
+      const { str, u64 } = await import('@arkiv-network/sdk/attr')
 
-      const [incoming, outgoing] = await Promise.all([
-        this._query(qIncoming, { limit: 200 }),
-        this._query(qOutgoing, { limit: 200 }),
+      const dmKey = deriveDmKey(myNoisePriv, peerNoisePub)
+      const since = gte('created_ms', u64(BigInt(sinceTimestamp)))
+
+      type RawE = {
+        key: unknown
+        payload: unknown
+        attributes: Record<string, { value: unknown }>
+        toJson?: () => unknown
+      }
+
+      const [inResult, outResult] = await Promise.all([
+        this.publicClient
+          .select({ key: true, payload: true, attributes: true })
+          .where(
+            and(
+              eq('project', str('weave-v1')),
+              eq('type', str('dm-message')),
+              eq('org', str(org)),
+              eq('sender', str(peerLabel)),
+              eq('recipient', str(myLabel)),
+              since,
+            ),
+          )
+          .limit(200)
+          .fetch(),
+        this.publicClient
+          .select({ key: true, payload: true, attributes: true })
+          .where(
+            and(
+              eq('project', str('weave-v1')),
+              eq('type', str('dm-message')),
+              eq('org', str(org)),
+              eq('sender', str(myLabel)),
+              eq('recipient', str(peerLabel)),
+              since,
+            ),
+          )
+          .limit(200)
+          .fetch(),
       ])
 
-      type RawEntity = { key: unknown; payload: Uint8Array; attributes: Record<string, unknown> }
+      const collectAll = async (firstPage: typeof inResult): Promise<RawE[]> => {
+        let page = firstPage
+        const all: RawE[] = [...(page.entities as RawE[])]
+        while (page.hasNextPage()) {
+          page = await page.next()
+          all.push(...(page.entities as RawE[]))
+        }
+        return all
+      }
 
-      const decode = (entities: RawEntity[], mine: boolean): ArkivDM[] =>
+      const [incoming, outgoing] = await Promise.all([
+        collectAll(inResult),
+        collectAll(outResult),
+      ])
+
+      const decode = (entities: RawE[], mine: boolean): ArkivDM[] =>
         entities.flatMap(e => {
           try {
-            const parsed = JSON.parse(Buffer.from(e.payload).toString('utf8')) as {
-              iv: string; ciphertext: string
-            }
+            const parsed = e.toJson != null
+              ? (e.toJson() as { iv: string; ciphertext: string })
+              : (JSON.parse(new TextDecoder().decode(e.payload as Uint8Array)) as { iv: string; ciphertext: string })
             const plain = decryptMessage(dmKey, parsed.iv, parsed.ciphertext)
             return [{
-              id:        String(e.key),
-              sender:    String(e.attributes['sender'] ?? ''),
-              timestamp: Number(e.attributes['timestamp'] ?? 0),
-              text:      new TextDecoder().decode(plain),
+              id: String(e.key),
+              sender: String(e.attributes['sender']?.value ?? ''),
+              timestamp: Number(e.attributes['created_ms']?.value ?? 0),
+              text: new TextDecoder().decode(plain),
               mine,
             }]
           } catch { return [] }
         })
 
       return [
-        ...decode(incoming as RawEntity[], false),
-        ...decode(outgoing as RawEntity[], true),
+        ...decode(incoming, false),
+        ...decode(outgoing, true),
       ].sort((a, b) => a.timestamp - b.timestamp)
     } catch (err) {
       console.warn('[arkiv] fetchDMs failed:', err)
@@ -360,19 +471,24 @@ export class ArkivManager {
     member: string,
     role: 'admin' | 'member',
   ): Promise<void> {
-    if (!ARKIV_ENABLED || !this.walletClient) return
+    if (!this.walletClient) return
 
     try {
+      const { ExpirationTime } = await import('@arkiv-network/sdk')
+      const { str } = await import('@arkiv-network/sdk/attr')
+
       await this.walletClient.createEntity({
-        payload:     Buffer.from('{}'),
-        contentType: 'application/json',
-        attributes: [
-          { name: 'type',    value: { str: 'channel-member' } },
-          { name: 'org',     value: { str: org } },
-          { name: 'channel', value: { str: channel } },
-          { name: 'member',  value: { str: member } },
-          { name: 'role',    value: { str: role } },
-        ],
+        payload: new Uint8Array(),
+        contentType: 'application/octet-stream',
+        attributes: {
+          project: str('weave-v1'),
+          type: str('channel-member'),
+          org: str(org),
+          channel: str(channel),
+          member: str(member),
+          role: str(role),
+        },
+        expires: ExpirationTime.fromDays(365),
       })
     } catch (err) {
       console.warn('[arkiv] addChannelMember failed:', err)
@@ -381,39 +497,40 @@ export class ArkivManager {
 
   /** List all members of a channel stored on Arkiv. */
   async listChannelMembers(org: string, channel: string): Promise<ChannelMemberRecord[]> {
-    if (!ARKIV_ENABLED || !this.publicClient) return []
+    if (!this.publicClient) return []
 
     try {
-      const query   = `type = str('channel-member') AND org = str('${org}') AND channel = str('${channel}')`
-      const results = await this._query(query, { limit: 500 })
-      return results.map((e: { attributes: Record<string, unknown> }) => ({
-        member: String(e.attributes['member'] ?? ''),
-        role:   String(e.attributes['role']   ?? 'member'),
+      const { eq, and } = await import('@arkiv-network/sdk/query')
+      const { str } = await import('@arkiv-network/sdk/attr')
+
+      type AttrEntity = { attributes: Record<string, { value: unknown }> }
+
+      let result = await this.publicClient
+        .select({ key: true, attributes: true })
+        .where(
+          and(
+            eq('project', str('weave-v1')),
+            eq('type', str('channel-member')),
+            eq('org', str(org)),
+            eq('channel', str(channel)),
+          ),
+        )
+        .limit(200)
+        .fetch()
+
+      const entities: AttrEntity[] = [...(result.entities as AttrEntity[])]
+      while (result.hasNextPage()) {
+        result = await result.next()
+        entities.push(...(result.entities as AttrEntity[]))
+      }
+
+      return entities.map(e => ({
+        member: String(e.attributes['member']?.value ?? ''),
+        role: String(e.attributes['role']?.value ?? 'member'),
       }))
     } catch (err) {
       console.warn('[arkiv] listChannelMembers failed:', err)
       return []
     }
-  }
-
-  // ── Internal ─────────────────────────────────────────────────────────────────
-
-  private async _query(
-    query: string,
-    opts: { limit?: number; cursor?: string; orderBy?: string } = {},
-  ): Promise<{ key: unknown; payload: Uint8Array; attributes: Record<string, unknown> }[]> {
-    const params: Record<string, unknown> = {
-      query,
-      select: ['payload', 'attributes'],
-      limit:  opts.limit ?? 100,
-    }
-    if (opts.cursor)  params['cursor']  = opts.cursor
-    if (opts.orderBy) params['orderBy'] = opts.orderBy
-
-    const response = await this.publicClient.request({
-      method: 'arkiv_query',
-      params: [params],
-    })
-    return (response?.entities ?? []) as { key: unknown; payload: Uint8Array; attributes: Record<string, unknown> }[]
   }
 }

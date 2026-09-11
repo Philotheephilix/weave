@@ -11,20 +11,19 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { TorManager } from './tor-manager.js'
 import { DHTDiscovery } from './dht-discovery.js'
 import { NostrDelivery } from './nostr-delivery.js'
-import { getPublicKey } from 'nostr-tools'
 import { npubEncode } from 'nostr-tools/nip19'
-import { IdentityManager, createIdentity, WeaveIdentity } from './identity-manager.js'
+import { IdentityManager, WeaveIdentity } from './identity-manager.js'
 import { computeStealthAddress } from './crypto/stealth-address.js'
 import { ADDRESSES, SEPOLIA_RPC } from './addresses.js'
 import { ArkivManager, deriveChannelKey } from './arkiv-manager.js'
 
-const ARKIV_ENABLED = process.env.WEAVE_ARKIV_ENABLED === 'true'
 
 const BIP39_WORDS = ['abandon','ability','able','about','above','absent','absorb','abstract','absurd','abuse','access','accident','account','accuse','achieve','acid','acoustic','acquire','across','act','action','actor','actress','actual','adapt','add','addict','address','adjust','admit','adult','advance','advice','aerobic','afford','afraid','again','age','agent','agree','ahead','aim','air','airport','aisle','alarm','album','alcohol','alert','alien','all','alley','allow','almost','alone','alpha','already','also','alter','always','amateur','amazing','among','amount','amused','analyst','anchor','ancient','anger','angle','angry','animal','ankle','announce','annual','another','answer','antenna','antique','anxiety','any','apart','apology','appear','apple','approve','april','arcade','arctic','area','arena','argue','arm','armed','armor','army','around','arrange','arrest','arrive','arrow','art','artefact','artist','artwork','ask','aspect','assault','asset','assist','assume','asthma','athlete','atom','attack','attend','attitude','attract','auction','audit','august','aunt','author','auto','autumn','average','avocado','avoid','awake','aware','away','awesome','awful','awkward','axis','baby','balance','bamboo','banana','banner','bar','barely','bargain','barrel','base','basic','basket','battle','beach','bean','beauty','because','become','beef','before','begin','behave','behind','believe','below','belt','bench','benefit','best','betray','better','between','beyond','bicycle','bid','bike','bind','biology','bird','birth','bitter','black','blade','blame','blanket','blast','bleak','bless','blind','blood','blossom','blouse','blue','blur','blush','board','boat','body','boil','bomb','bone','book','boost','border','boring','borrow','boss','bottom','bounce','box','boy','bracket','brain','brand','brave','breeze','brick','bridge','brief','bright','bring','brisk','broccoli','broken','bronze','broom','brother','brown','brush','bubble','buddy','budget','buffalo','build','bulb','bulk','bullet','bundle','bunker','burden','burger','burst','bus','business','busy','butter','buyer','buzz','cabbage','cabin','cable','cactus','cage','cake','call','calm','camera','camp','can','canal','cancel','candy','cannon','canvas','canyon','capable','capital','captain','car','carbon','card','cargo','carpet','carry','cart','case','cash','casino','castle','casual','cat','catalog','catch','category','cattle','caught','cause','caution','cave','ceiling','celery','cement','census','century','cereal','certain','chair','chalk','champion','change','chaos','chapter','charge','chase','chat','cheap','check','cheese','chef','cherry','chest','chicken','chief','child','chimney','choice','choose','chronic','chuckle','chunk','churn','cigar','cinnamon','circle','citizen','city','civil','claim','clap','clarify','claw','clay','clean','clerk','clever','click','client','cliff','climb','clinic','clip','clock','clog','close','cloth','cloud','clown','club','clump','cluster','clutch','coach','coast','coconut','code','coffee','coil','coin','collect','color','column','combine','come','comfort','comic','common','company','concert','conduct','confirm','congress','connect','consider','control','convince','cook','cool','copper','copy','coral','core','corn','correct','cost','cotton','couch','country','couple','course','cousin','cover','coyote','crack','cradle','craft','cram','crane','crash','crater','crawl','crazy','cream','credit','creek','crew','cricket','crime','crisp','critic','cross','crouch','crowd','crucial','cruel','cruise','crumble','crunch','crush','cry','crystal','cube','culture','cup','cupboard','curious','current','curtain','curve','cushion','custom','cute','cycle','dad','damage','damp','dance','danger','daring','dash','daughter','dawn','day','deal','debate','debris','decade','december','decide','decline','decorate','decrease','deer','defense','define','defy','degree','delay','deliver','demand','demise','denial','dentist','deny','depart','depend','deposit','depth','deputy','derive','describe','desert','design','desk','despair','destroy','detail','detect','develop','device','devote','diagram','dial','diamond','diary','dice','diesel','diet','differ','digital','dignity','dilemma','dinner','dinosaur','direct','dirt','disagree','discover','disease','dish','dismiss','disorder','display','distance','divert','divide','divorce','dizzy','doctor','document','dog','doll','dolphin','domain','donate','donkey','donor','door','dose','double','dove','draft','dragon','drama','drastic','draw','dream','dress','drift','drill','drink','drip','drive','drop','drum','dry','duck','dumb','dune','during','dust','dutch','duty','dwarf','dynamic','eager','eagle','early','earn','earth','easily','east','easy','echo','ecology','edge','edit','educate','effort','egg','eight','either','elbow','elder','electric','elegant','element','elephant','elevator','elite','else','embark','embody','embrace','emerge','emotion','employ','empower','empty','enable','enact','endless','endorse','enemy','energy','enforce','engage','engine','enhance','enjoy','enlist','enough','enrich','enroll','ensure','enter','entire','entry','envelope','episode','equal','equip','erase','erode','erosion','error','erupt','escape','essay','essence','estate','eternal','ethics','evidence','evil','evoke','evolve','exact','example','excess','exchange','excite','exclude','exercise','exhaust','exhibit','exile','exist','exit','exotic','expand','expire','explain','expose','express','extend','extra','eye','fable','face','faculty','faint','faith','fall','false','fame','family','famous','fan','fancy','fantasy','far','fashion','fat','fatal','father','fatigue','fault','favorite','feature','february','federal','fee','feed','feel','feet','fellow','felt','fence','festival','fetch','fever','few','fiber','fiction','field','figure','file','film','filter','final','find','fine','finger','finish','fire','firm','first','fiscal','fish','fit','fitness','fix','flag','flame','flash','flat','flavor','flee','flight','flip','float','flock','floor','flower','fluid','flush','fly','foam','focus','fog','foil','follow','food','foot','force','forest','forget','fork','fortune','forum','forward','fossil','foster','found','fox','fragile','frame','frequent','fresh','friend','fringe','frog','front','frost','frown','frozen','fruit','fuel','fun','funny','furnace','fury','future','gadget','gain','galaxy','gallery','game','gap','garbage','garden','garlic','garment','gas','gasp','gate','gather','gauge','gaze','general','genius','genre','gentle','genuine','gesture','ghost','giant','gift','giggle','ginger','giraffe','girl','give','glad','glance','glare','glass','glide','glimpse','globe','gloom','glory','glove','glow','glue','goat','goddess','gold','good','goose','gorilla','gospel','gossip','govern','gown','grab','grace','grain','grant','grape','grasp','grass','gravity','great','green','grid','grief','grit','grocery','group','grow','grunt','guard','guide','guilt','guitar','gun','gym','habit','hair','half','hammer','hamster','hand','happy','harsh','harvest','hat','have','hawk','hazard','head','health','heart','heavy','hedgehog','height','hello','helmet','help','hero','hidden','high','hill','hint','hip','hire','history','hobby','hockey','hold','hole','holiday','hollow','home','honey','hood','hope','horn','hospital','host','hour','hover','hub','huge','human','humble','humor','hundred','hungry','hunt','hurdle','hurry','hurt','husband','hybrid','ice','icon','ignore','ill','illegal','image','imitate','immense','immune','impact','impose','improve','impulse','inbox','income','index','indicate','indoor','industry','infant','inflict','inform','inhale','inject','inner','innocent','input','inquiry','insane','insect','inside','inspire','install','intact','interest','into','invest','invite','involve','iron','island','isolate','issue','item','ivory','jacket','jaguar','jar','jazz','jealous','jeans','jelly','jewel','job','join','joke','journey','joy','judge','juice','jump','jungle','junior','junk','just','kangaroo','keen','keep','ketchup','key','kick','kid','kingdom','kiss','kit','kitchen','kite','kitten','kiwi','knee','knife','knock','know','lab','ladder','lady','lake','lamp','language','laptop','large','later','laugh','laundry','lava','lawn','lawsuit','layer','lazy','leader','learn','leave','lecture','left','leg','legal','legend','leisure','lemon','lend','length','lens','leopard','lesson','letter','level','liar','liberty','library','license','life','lift','like','limb','lion','liquid','list','little','live','lizard','load','loan','lobster','local','lock','logic','lonely','long','loop','lottery','loud','lounge','love','loyal','lucky','luggage','lumber','lunar','lunch','luxury','mad','magic','magnet','maid','main','mammoth','manage','mandate','mango','mansion','manual','maple','marble','march','margin','marine','market','marriage','mask','master','match','material','math','matter','maximum','maze','meadow','mean','medal','media','melody','melt','member','memory','mention','menu','mercy','mesh','message','metal','method','middle','midnight','milk','minute','miracle','miss','mitten','model','modify','mom','monitor','monkey','monster','month','moon','moral','more','morning','mosquito','mother','motion','motor','mountain','mouse','move','movie','much','muffin','mule','multiply','muscle','museum','mushroom','music','must','mutual','myself','mystery','naive','name','napkin','narrow','nasty','nature','near','neck','need','negative','neglect','neither','nephew','nerve','nest','network','news','next','nice','night','noble','noise','nominee','noodle','normal','north','notable','note','nothing','notice','novel','now','nuclear','number','nurse','nut','oak','obey','object','oblige','obscure','obtain','ocean','october','odor','offer','office','often','oil','okay','old','olive','olympic','omit','once','onion','open','option','orange','orbit','orchard','order','ordinary','organ','orient','original','orphan','ostrich','other','outdoor','outside','oval','over','own','oyster','ozone','pact','paddle','page','pair','palace','palm','panda','panel','panic','panther','paper','parade','parent','park','parrot','party','pass','patch','path','patrol','pause','pave','payment','peace','peanut','peasant','pelican','pen','penalty','pencil','people','pepper','perfect','permit','person','pet','phone','photo','phrase','physical','piano','picnic','picture','piece','pig','pigeon','pill','pilot','pink','pioneer','pipe','pistol','pitch','pizza','place','planet','plastic','plate','play','please','pledge','pluck','plug','plunge','poem','poet','point','polar','pole','police','pond','pony','pool','popular','portion','position','possible','post','potato','pottery','poverty','powder','power','practice','praise','predict','prefer','prepare','present','pretty','prevent','price','pride','primary','print','priority','prison','private','prize','problem','process','produce','profit','program','project','promote','proof','property','prosper','protect','proud','provide','public','pudding','pull','pulp','pulse','pumpkin','punish','pupil','purchase','purity','purpose','push','put','puzzle','pyramid','quality','quantum','quarter','question','quick','quit','quiz','quote','rabbit','raccoon','race','rack','radar','radio','rage','rail','rain','raise','rally','ramp','ranch','random','range','rapid','rare','rate','rather','raven','reach','ready','real','reason','rebel','rebuild','recall','receive','recipe','record','recycle','reduce','reflect','reform','refuse','region','regret','regular','reject','relax','release','relief','rely','remain','remember','remind','remove','render','renew','rent','reopen','repair','repeat','replace','report','require','rescue','resemble','resist','resource','response','result','retire','retreat','return','reunion','reveal','review','reward','rhythm','ribbon','rid','ride','ridge','rifle','right','rigid','ring','riot','ripple','risk','ritual','rival','river','road','roast','robot','robust','rocket','romance','roof','rookie','room','rose','rotate','rough','royal','rubber','rude','rug','rule','run','runway','rural','sad','saddle','sadness','safe','sail','salad','salmon','salon','salt','salute','same','sample','sand','satisfy','satoshi','sauce','sausage','save','say','scale','scan','scatter','scene','scheme','school','science','scissors','scorpion','scout','scrap','screen','script','scrub','sea','search','season','seat','second','secret','section','security','seek','segment','select','sell','seminar','senior','sense','sentence','series','service','session','settle','setup','seven','shadow','shaft','shallow','share','shed','shell','sheriff','shield','shift','shine','ship','shiver','shock','shoot','short','shoulder','shove','shrimp','shrug','shuffle','shy','sibling','siege','sight','sign','silent','silk','silly','silver','similar','simple','since','sing','siren','sister','situate','six','size','sketch','skill','skin','skirt','skull','slab','slam','sleep','slender','slice','slide','slight','slim','slogan','slot','slow','slush','small','smart','smile','smoke','smooth','snack','snake','snap','sniff','snow','soap','soccer','social','sock','solar','soldier','solid','solution','solve','someone','song','soon','sorry','soul','sound','soup','source','south','space','spare','spatial','spawn','speak','special','speed','sphere','spice','spider','spike','spin','spirit','split','spoil','sponsor','spoon','spray','spread','spring','spy','square','squeeze','squirrel','stable','stadium','staff','stage','stairs','stamp','stand','start','state','stay','steak','steel','stem','step','stereo','stick','still','sting','stock','stomach','stone','stop','store','storm','story','stove','strategy','street','strike','strong','struggle','student','stuff','stumble','subject','submit','subway','success','such','sudden','suffer','sugar','suggest','suit','summer','sun','sunny','sunset','super','supply','supreme','sure','surface','surge','surprise','sustain','swallow','swamp','swap','swear','sweet','swift','swim','swing','switch','sword','symbol','symptom','syrup','table','tackle','tag','tail','talent','tank','tape','target','task','tattoo','taxi','teach','team','tell','ten','tenant','tennis','tent','term','test','text','thank','that','theme','then','theory','there','they','thing','this','thought','three','thrive','throw','thumb','thunder','ticket','tilt','timber','time','tiny','tip','tired','title','toast','tobacco','today','together','toilet','token','tomato','tomorrow','tone','tongue','tonight','tool','topic','topple','torch','tornado','tortoise','toss','total','tourist','toward','tower','town','toy','track','trade','traffic','tragic','train','transfer','trap','trash','travel','tray','treat','tree','trend','trial','tribe','trick','trigger','trim','trip','trophy','trouble','truck','truly','trumpet','trust','truth','try','tube','tuition','tumble','tuna','tunnel','turkey','turn','turtle','twelve','twenty','twice','twin','twist','two','type','typical','ugly','umbrella','unable','uniform','unique','universe','unknown','unlock','until','unusual','unveil','update','upgrade','uphold','upon','upper','upset','urban','useful','useless','usual','utility','vacant','vacuum','vague','valid','valley','valve','van','vanish','vapor','various','vast','vault','vehicle','velvet','vendor','venture','venue','verb','verify','version','very','vessel','veteran','viable','vibrant','vicious','victory','video','view','village','vintage','violin','virtual','virus','visa','visit','visual','vital','vivid','vocal','voice','void','volcano','volume','vote','voyage','wage','wagon','wait','walk','wall','walnut','want','warfare','warm','warrior','waste','water','wave','way','wealth','weapon','wear','weasel','wedding','weekend','weird','welcome','west','wet','whale','wheat','wheel','when','where','whip','whisper','wide','width','wife','wild','will','win','window','wine','wing','wink','winner','winter','wire','wisdom','wise','wish','witness','wolf','woman','wonder','wood','wool','word','world','worry','worth','wrap','wreck','wrestle','wrist','write','wrong','yard','year','yellow','you','young','youth','zebra','zero','zone','zoo']
 
 // Derive deterministic WeaveIdentity + secp256k1 wallet key from BIP39 seed phrase.
 // Uses sha256 chains for simplicity (no BIP32 — keeps noble/hashes as only dep).
-function deriveKeysFromSeed(words: string[]): {
+// Exported so index.ts can derive the real identity at startup from a persisted seed.
+export function deriveKeysFromSeed(words: string[]): {
   identity: WeaveIdentity
   ethPrivKey: `0x${string}`
   ethAddress: `0x${string}`
@@ -278,7 +277,8 @@ function saveIdentity(data: Record<string, unknown>): void {
   fs.writeFileSync(IDENTITY_PATH(), JSON.stringify(rest, null, 2))
 }
 
-function loadIdentity(): Record<string, unknown> | null {
+// Exported so index.ts can load a persisted seed at startup.
+export function loadIdentity(): Record<string, unknown> | null {
   const fpath = IDENTITY_PATH()
   if (!fs.existsSync(fpath)) return null
   const meta = JSON.parse(fs.readFileSync(fpath, 'utf8')) as Record<string, unknown>
@@ -300,15 +300,19 @@ export function registerIpcHandlers(
   dht: DHTDiscovery,
   nostr: NostrDelivery,
   idMgr: IdentityManager,
-  identity: WeaveIdentity,
+  identityRef: { current: WeaveIdentity },
   win: BrowserWindow,
-  arkiv?: ArkivManager,
+  arkivRef?: { current: ArkivManager },
 ): void {
 
+  // All handlers read identity through this ref so login can swap keys in-place.
+  const getIdentity = () => identityRef.current
+  const getArkiv    = () => arkivRef?.current
+
   ipcMain.handle('weave:identity:get', () => ({
-    viewPub:   Buffer.from(identity.viewPub).toString('hex'),
-    spendPub:  Buffer.from(identity.spendPub).toString('hex'),
-    noisePub:  Buffer.from(identity.noisePub).toString('hex'),
+    viewPub:   Buffer.from(getIdentity().viewPub).toString('hex'),
+    spendPub:  Buffer.from(getIdentity().spendPub).toString('hex'),
+    noisePub:  Buffer.from(getIdentity().noisePub).toString('hex'),
   }))
 
   ipcMain.handle('weave:resolve', async (_e, label: string) => {
@@ -316,19 +320,19 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle('weave:notifications:poll', async () => {
-    return idMgr.pollNotificationLog(identity.spendPub)
+    return idMgr.pollNotificationLog(getIdentity().spendPub)
   })
 
   ipcMain.handle('weave:dht:announce', (_e, onionAddress: string) => {
     if (!/^[a-z2-7]{56}\.onion$/.test(onionAddress)) return
-    dht.announce(identity.viewPriv, identity.viewPub, onionAddress)
+    dht.announce(getIdentity().viewPriv, getIdentity().viewPub, onionAddress)
   })
 
   // Lookup can only decrypt records for the local identity (DHT values are encrypted to our viewPub).
   ipcMain.handle('weave:dht:lookup', async () => {
     return new Promise<string | null>((resolve) => {
       const timer = setTimeout(() => resolve(null), 5000)
-      dht.lookup(identity.viewPriv, (onion) => {
+      dht.lookup(getIdentity().viewPriv, (onion) => {
         clearTimeout(timer)
         resolve(onion)
       })
@@ -348,7 +352,12 @@ export function registerIpcHandlers(
       const resolved = await idMgr.resolveHandle(recipientLabel)
       if (!resolved?.nostrPub) return { ok: false, reason: 'peer not found' }
       const payload = JSON.stringify({ type: 'weave-call-signal', signal })
-      await nostr.send(identity.viewPriv, resolved.nostrPub, payload)
+      const recipientNpub = resolved.nostrPub.startsWith('npub1')
+        ? resolved.nostrPub
+        : npubEncode(resolved.nostrPub.replace(/^0x/, ''))
+      const isPlaceholder = /^(npub1[q]+|0{64}|0x0{64})$/.test(recipientNpub)
+      if (isPlaceholder) return { ok: false, reason: 'peer has no nostr pubkey' }
+      await nostr.send(getIdentity().viewPriv, recipientNpub, payload)
       return { ok: true }
     } catch (err) {
       return { ok: false, reason: String(err) }
@@ -356,15 +365,16 @@ export function registerIpcHandlers(
   })
 
   // Subscribe to incoming call signals and push them to the renderer.
-  // Uses identity.viewPriv as the Nostr receive key (secp256k1 — same as send).
-  nostr.subscribe(identity.viewPriv, (from, content) => {
+  // Captured so the login handler can unsubscribe and re-subscribe with real keys.
+  const callSignalCb = (from: string, content: string) => {
     try {
       const parsed = JSON.parse(content) as { type?: string; signal?: object }
       if (parsed.type === 'weave-call-signal' && parsed.signal) {
         win.webContents.send('weave:call:signal', { from, signal: parsed.signal })
       }
     } catch { /* not a call signal — ignore */ }
-  })
+  }
+  let _nostrCallUnsub = nostr.subscribe(getIdentity().viewPriv, callSignalCb)
 
   ipcMain.handle('weave:stealth:compute', (_e, viewPubHex: string, spendPubHex: string) => {
     const ephPriv = new Uint8Array(32)
@@ -527,6 +537,24 @@ export function registerIpcHandlers(
         },
       }
       saveIdentity(loginData)
+
+      // ── Swap active identity so all subsequent IPC calls use the real keys ──
+      identityRef.current = derived
+
+      // ── Rebuild ArkivManager with the real spend key ─────────────────────────
+      if (arkivRef) {
+        const realSpendHex = `0x${Buffer.from(derived.spendPriv).toString('hex')}` as `0x${string}`
+        const newArkiv = new ArkivManager(realSpendHex)
+        await newArkiv.init()
+        arkivRef.current = newArkiv
+      }
+
+      // ── Re-subscribe Nostr on the real keys ──────────────────────────────────
+      _nostrCallUnsub()
+      _nostrUnsub()
+      _nostrCallUnsub = nostr.subscribe(derived.viewPriv, callSignalCb)
+      _nostrUnsub     = nostr.subscribe(derived.spendPriv, dmReceivedCb)
+
       return { success: true, identity: loginData }
     } catch {
       return { success: false, error: "Handle not enrolled or keys don't match" }
@@ -541,12 +569,12 @@ export function registerIpcHandlers(
     org: string; channel: string; recipient: string
     keyVersion: number; K_channel: string; recipientNoisePub: string
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return { ok: false, reason: 'disabled' }
-    await arkiv.storeChannelKey(
+    if (!getArkiv()) return { ok: false, reason: 'disabled' }
+    await getArkiv()!.storeChannelKey(
       org, channel, recipient, keyVersion,
       Buffer.from(K_channel, 'hex'),
       Buffer.from(recipientNoisePub, 'hex'),
-      identity.noisePriv,
+      getIdentity().noisePriv,
     )
     return { ok: true }
   })
@@ -556,8 +584,8 @@ export function registerIpcHandlers(
   }: {
     org: string; channel: string; recipientLabel: string; keyVersion: number
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return null
-    const key = await arkiv.fetchChannelKey(org, channel, recipientLabel, keyVersion, identity.noisePriv)
+    if (!getArkiv()) return null
+    const key = await getArkiv()!.fetchChannelKey(org, channel, recipientLabel, keyVersion, getIdentity().noisePriv)
     return key ? Buffer.from(key).toString('hex') : null
   })
 
@@ -566,8 +594,8 @@ export function registerIpcHandlers(
   }: {
     org: string; channel: string; recipientLabel: string
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return -1
-    return arkiv.getLatestKeyVersion(org, channel, recipientLabel)
+    if (!getArkiv()) return -1
+    return getArkiv()!.getLatestKeyVersion(org, channel, recipientLabel)
   })
 
   ipcMain.handle('weave:arkiv:rotateChannelKey', async (_e, {
@@ -577,19 +605,20 @@ export function registerIpcHandlers(
     channel: string
     members: { label: string; noisePub: string }[]
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return { ok: false, reason: 'disabled' }
+    if (!getArkiv()) return { ok: false, reason: 'disabled' }
     const newKey     = deriveChannelKey()
     const firstLabel = members[0]?.label ?? ''
-    const currentVer = await arkiv.getLatestKeyVersion(org, channel, firstLabel)
+    const currentVer = await getArkiv()!.getLatestKeyVersion(org, channel, firstLabel)
     const newVersion = currentVer + 1
-    await Promise.all(members.map(m =>
-      arkiv.storeChannelKey(
+    // Sequential: Arkiv requires one wallet → one nonce at a time
+    for (const m of members) {
+      await getArkiv()!.storeChannelKey(
         org, channel, m.label, newVersion,
         newKey,
         Buffer.from(m.noisePub, 'hex'),
-        identity.noisePriv,
-      ),
-    ))
+        getIdentity().noisePriv,
+      )
+    }
     return newVersion
   })
 
@@ -600,13 +629,13 @@ export function registerIpcHandlers(
   }: {
     org: string; channel: string; keyVersion: number; text: string; expiryDays?: number
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return { ok: false, reason: 'disabled' }
+    if (!getArkiv()) return { ok: false, reason: 'disabled' }
     const saved      = loadIdentity() as { handle?: string } | null
     const myLabel    = saved?.handle ?? ''
-    const K_channel  = await arkiv.fetchChannelKey(org, channel, myLabel, keyVersion, identity.noisePriv)
+    const K_channel  = await getArkiv()!.fetchChannelKey(org, channel, myLabel, keyVersion, getIdentity().noisePriv)
     if (!K_channel) throw new Error('No channel key — not a member or key not fetched yet')
     const senderLabel = saved?.handle ?? 'unknown'
-    return arkiv.postMessage(org, channel, senderLabel, K_channel, keyVersion, text, expiryDays)
+    return getArkiv()!.postMessage(org, channel, senderLabel, K_channel, keyVersion, text, expiryDays)
   })
 
   ipcMain.handle('weave:arkiv:fetchMessages', async (_e, {
@@ -614,12 +643,12 @@ export function registerIpcHandlers(
   }: {
     org: string; channel: string; sinceTimestamp: number; keyVersion: number
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return []
+    if (!getArkiv()) return []
     const saved     = loadIdentity() as { handle?: string } | null
     const myLabel   = saved?.handle ?? ''
-    const K_channel = await arkiv.fetchChannelKey(org, channel, myLabel, keyVersion, identity.noisePriv)
+    const K_channel = await getArkiv()!.fetchChannelKey(org, channel, myLabel, keyVersion, getIdentity().noisePriv)
     if (!K_channel) return []
-    return arkiv.fetchMessages(org, channel, sinceTimestamp, K_channel)
+    return getArkiv()!.fetchMessages(org, channel, sinceTimestamp, K_channel)
   })
 
   // ── Arkiv: DM storage ───────────────────────────────────────────────────────
@@ -629,14 +658,14 @@ export function registerIpcHandlers(
   }: {
     org: string; recipientLabel: string; text: string; expiryDays?: number
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return { ok: false, reason: 'disabled' }
+    if (!getArkiv()) return { ok: false, reason: 'disabled' }
     const saved       = loadIdentity() as { handle?: string } | null
     const senderLabel = saved?.handle ?? ''
     const peerIdentity = await idMgr.resolveHandle(recipientLabel)
     if (!peerIdentity) throw new Error(`Cannot resolve ${recipientLabel}`)
-    return arkiv.postDM(
+    return getArkiv()!.postDM(
       org, senderLabel, recipientLabel,
-      identity.noisePriv, peerIdentity.noisePub,
+      getIdentity().noisePriv, peerIdentity.noisePub,
       text, expiryDays,
     )
   })
@@ -646,14 +675,14 @@ export function registerIpcHandlers(
   }: {
     org: string; peerLabel: string; sinceTimestamp: number
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return []
+    if (!getArkiv()) return []
     const saved       = loadIdentity() as { handle?: string } | null
     const myLabel     = saved?.handle ?? ''
     const peerIdentity = await idMgr.resolveHandle(peerLabel)
     if (!peerIdentity) return []
-    return arkiv.fetchDMs(
+    return getArkiv()!.fetchDMs(
       org, myLabel, peerLabel, sinceTimestamp,
-      identity.noisePriv, peerIdentity.noisePub,
+      getIdentity().noisePriv, peerIdentity.noisePub,
     )
   })
 
@@ -664,8 +693,8 @@ export function registerIpcHandlers(
   }: {
     org: string; channel: string; member: string; role: 'admin' | 'member'
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return { ok: false, reason: 'disabled' }
-    await arkiv.addChannelMember(org, channel, member, role)
+    if (!getArkiv()) return { ok: false, reason: 'disabled' }
+    await getArkiv()!.addChannelMember(org, channel, member, role)
     return { ok: true }
   })
 
@@ -674,8 +703,77 @@ export function registerIpcHandlers(
   }: {
     org: string; channel: string
   }) => {
-    if (!ARKIV_ENABLED || !arkiv) return []
-    return arkiv.listChannelMembers(org, channel)
+    if (!getArkiv()) return []
+    return getArkiv()!.listChannelMembers(org, channel)
+  })
+
+  // ── Org: mint guest ERC-1155 token (WeaveRegistrar.registerGuest) ──────────
+
+  ipcMain.handle('weave:org:mintGuestToken', async (_e, {
+    orgLabel, guestLabel, guestAddress, expiryLabel,
+  }: {
+    orgLabel: string; guestLabel: string; guestAddress: string; expiryLabel: string
+  }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      if (!saved?.seedPhrase) return { error: 'Not logged in' }
+      const durationMap: Record<string, number> = {
+        '24 hours': 86400,
+        '7 days':   604800,
+        '30 days':  2592000,
+      }
+      const durationSeconds = BigInt(durationMap[expiryLabel] ?? 2592000)
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const account = privateKeyToAccount(ethPrivKey)
+      const walletClient = createWalletClient({ account, chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const toHex = (b: Uint8Array): `0x${string}` => `0x${Buffer.from(b).toString('hex')}`
+      // Resolve guest's own identity keys (not admin's)
+      const guestResolved = await idMgr.resolveHandle(guestLabel).catch(() => null)
+      const guestIdentityArg = {
+        stealthViewKey:  guestResolved ? toHex(guestResolved.viewPub) : ('0x' as `0x${string}`),
+        stealthSpendKey: guestResolved ? toHex(guestResolved.spendPub) : ('0x' as `0x${string}`),
+        x25519Pubkey:    guestResolved ? toHex(guestResolved.noisePub) : ('0x' as `0x${string}`),
+        onionAddress:    guestResolved?.onionAddress ? `0x${Buffer.from(guestResolved.onionAddress).toString('hex')}` as `0x${string}` : ('0x' as `0x${string}`),
+        nostrPubkey:     `0x${'00'.repeat(32)}` as `0x${string}`,
+        registeredAt:    BigInt(Math.floor(Date.now() / 1000)),
+      }
+      const txHash = await walletClient.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: [
+          {
+            name: 'registerGuest',
+            type: 'function',
+            stateMutability: 'nonpayable',
+            inputs: [
+              { name: 'label',           type: 'string' },
+              { name: 'guestAddr',       type: 'address' },
+              { name: 'durationSeconds', type: 'uint64' },
+              {
+                name: 'identity',
+                type: 'tuple',
+                components: [
+                  { name: 'stealthViewKey',  type: 'bytes' },
+                  { name: 'stealthSpendKey', type: 'bytes' },
+                  { name: 'x25519Pubkey',    type: 'bytes' },
+                  { name: 'onionAddress',    type: 'bytes' },
+                  { name: 'nostrPubkey',     type: 'bytes' },
+                  { name: 'registeredAt',    type: 'uint64' },
+                ],
+              },
+            ],
+            outputs: [],
+          },
+        ] as const,
+        functionName: 'registerGuest',
+        args: [guestLabel, guestAddress as `0x${string}`, durationSeconds, guestIdentityArg],
+      })
+      const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      await pubClient.waitForTransactionReceipt({ hash: txHash })
+      return { ok: true, txHash }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { error: msg }
+    }
   })
 
   // ── Chat: send DM (Tor → Nostr → Arkiv fallback) ───────────────────────────
@@ -716,7 +814,7 @@ export function registerIpcHandlers(
         // Skip if pubkey is all-zeros placeholder
         const isPlaceholder = /^(npub1[q]+|0{64}|0x0{64})$/.test(recipientNpub)
         if (!isPlaceholder) {
-          await nostr.send(identity.spendPriv, recipientNpub, text)
+          await nostr.send(getIdentity().spendPriv, recipientNpub, text)
           via = 'nostr'
         }
       } catch {
@@ -725,8 +823,8 @@ export function registerIpcHandlers(
     }
 
     // 3. Always persist in Arkiv for offline delivery
-    if (ARKIV_ENABLED && arkiv && peerIdentity) {
-      await arkiv.postDM(org, senderLabel, peerLabel, identity.noisePriv, peerIdentity.noisePub, text).catch(() => {})
+    if (getArkiv() && peerIdentity) {
+      await getArkiv()!.postDM(org, senderLabel, peerLabel, getIdentity().noisePriv, peerIdentity.noisePub, text).catch(() => {})
     }
 
     return { ok: true, via }
@@ -791,14 +889,15 @@ export function registerIpcHandlers(
 
 // ── Chat: subscribe Nostr for incoming DMs, push to renderer ───────────────
 
-  const _nostrUnsub = nostr.subscribe(identity.spendPriv, (from, content) => {
-    const win = BrowserWindow.getAllWindows()[0]
-    if (win && !win.isDestroyed()) {
-      win.webContents.send('weave:dm:received', { from, content })
+  const dmReceivedCb = (from: string, content: string) => {
+    const w = BrowserWindow.getAllWindows()[0]
+    if (w && !w.isDestroyed()) {
+      w.webContents.send('weave:dm:received', { from, content })
     }
-  })
+  }
+  let _nostrUnsub = nostr.subscribe(getIdentity().spendPriv, dmReceivedCb)
 
-  app.on('before-quit', () => { _nostrUnsub() })
+  app.on('before-quit', () => { _nostrUnsub(); _nostrCallUnsub() })
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

@@ -10,9 +10,10 @@ contextBridge.exposeInMainWorld('weave', {
     login:         (data: any) => ipcRenderer.invoke('weave:identity:login', data),
   },
   org: {
-    create:      (data: any) => ipcRenderer.invoke('weave:org:create', data),
-    enroll:      (data: any) => ipcRenderer.invoke('weave:member:enroll', data),
-    listMembers: (orgName: string) => ipcRenderer.invoke('weave:member:list', orgName),
+    create:         (data: any) => ipcRenderer.invoke('weave:org:create', data),
+    enroll:         (data: any) => ipcRenderer.invoke('weave:member:enroll', data),
+    listMembers:    (orgName: string) => ipcRenderer.invoke('weave:member:list', orgName),
+    mintGuestToken: (args: object) => ipcRenderer.invoke('weave:org:mintGuestToken', args),
   },
   resolve:       (label: string) => ipcRenderer.invoke('weave:resolve', label),
   notifications: {

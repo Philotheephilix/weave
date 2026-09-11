@@ -83,6 +83,7 @@ declare global {
         create: (args: { orgName: string; seedPhrase: string[] }) => Promise<OrgCreateResult>
         enroll: (args: { orgName: string; memberName: string; memberAddress: string }) => Promise<OrgEnrollResult>
         listMembers: (orgName: string) => Promise<OrgMember[]>
+        mintGuestToken: (args: { orgLabel: string; guestLabel: string; guestAddress: string; expiryLabel: string }) => Promise<{ txHash?: string; error?: string }>
       }
       resolve: (label: string) => Promise<ResolvedIdentity | null>
       notifications: {
@@ -104,7 +105,7 @@ declare global {
         }): Promise<{ ok: boolean; via: 'tor' | 'nostr' | 'arkiv-only' }>
       }
       call: {
-        signal(args: { to: string; signal: object }): Promise<void>
+        signal(args: { recipientLabel: string; signal: object }): Promise<void>
         onSignal(cb: (payload: { from: string; signal: object }) => void): () => void
       }
       teams: {
@@ -184,4 +185,14 @@ export async function ipcTorProxy(): Promise<TorProxy> {
 
 export async function ipcComputeStealth(viewPubHex: string, spendPubHex: string): Promise<StealthResult> {
   return window.weave.stealth.compute(viewPubHex, spendPubHex)
+}
+
+export async function ipcCallSignal(args: { recipientLabel: string; signal: object }): Promise<void> {
+  return window.weave.call.signal(args)
+}
+
+export function ipcCallOnSignal(
+  cb: (payload: { from: string; signal: object }) => void
+): () => void {
+  return window.weave.call.onSignal(cb)
 }

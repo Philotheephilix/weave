@@ -158,7 +158,6 @@ export default function Sidebar(props: SidebarProps) {
   const { rail, teams, teamOpen, activeTeam, activeChannel, activeDM, joinedVoice, voiceTeam, mic, dmOrder, dms, callLog, members, isAdmin } = props
 
   const titles: Record<RailId, string> = { teams: 'Teams', chat: 'Direct Messages', calls: 'Calls', members: 'Members' }
-  const [micHover, setMicHover] = useState(false)
   const [leaveHover, setLeaveHover] = useState(false)
 
   // Voice status bar data
@@ -249,8 +248,6 @@ export default function Sidebar(props: SidebarProps) {
             <span style={{ flex: 1, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, color: '#006786' }}>tor · opus · {peerCount} peers</span>
             <button
               onClick={props.onToggleMic}
-              onMouseEnter={() => setMicHover(true)}
-              onMouseLeave={() => setMicHover(false)}
               title="Mute"
               style={{ display: 'grid', placeItems: 'center', width: 26, height: 26, borderRadius: 2, color: mic ? '#006786' : '#aa0b56', background: mic ? 'transparent' : 'rgba(214,0,108,.1)', cursor: 'pointer' }}>
               <i className={`ph-duotone ${mic ? 'ph-microphone' : 'ph-microphone-slash'}`} style={{ fontSize: 15 }}></i>

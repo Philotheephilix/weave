@@ -18,18 +18,6 @@ interface InviteModalProps {
 
 const ROLES = ['Owner', 'Moderator', 'Member', 'Guest']
 const EXPIRIES = ['24 hours', '7 days', '30 days']
-const SUGGESTIONS: { id: string; handle: string; initials: string; tint: string; ink: string }[] = []
-
-function SuggestBtn({ s, onPick }: { s: typeof SUGGESTIONS[0]; onPick: () => void }) {
-  const [hover, setHover] = useState(false)
-  return (
-    <button onClick={onPick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 9px', background: hover ? '#e9f8ff' : '#f8f4f4', border: `1px solid ${hover ? '#0088b0' : 'rgba(32,30,29,.14)'}`, borderRadius: 2, fontSize: 12.5, cursor: 'pointer' }}>
-      <span style={{ display: 'grid', placeItems: 'center', width: 19, height: 19, background: s.tint, color: s.ink, fontSize: 9, fontWeight: 600, borderRadius: 2 }}>{s.initials}</span>
-      {s.handle}
-    </button>
-  )
-}
 
 function InvitedTag({ h, onRemove }: { h: string; onRemove: () => void }) {
   const [hover, setHover] = useState(false)
@@ -48,7 +36,7 @@ function RoleBtn({ r, isActive, onClick }: { r: string; isActive: boolean; onCli
   const [hover, setHover] = useState(false)
   return (
     <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ padding: '7px 12px', fontSize: 13, fontWeight: isActive ? 600 : 400, background: isActive ? '#e9f8ff' : '#f8f4f4', color: isActive ? '#004961' : '#201e1d', border: `1px solid ${isActive ? '#0088b0' : 'rgba(32,30,29,.16)'}`, borderRadius: 2, cursor: 'pointer' }}>
+      style={{ padding: '7px 12px', fontSize: 13, fontWeight: isActive ? 600 : 400, background: isActive ? '#e9f8ff' : (hover ? 'rgba(32,30,29,.06)' : '#f8f4f4'), color: isActive ? '#004961' : '#201e1d', border: `1px solid ${isActive ? '#0088b0' : hover ? 'rgba(32,30,29,.32)' : 'rgba(32,30,29,.16)'}`, borderRadius: 2, cursor: 'pointer' }}>
       {r}
     </button>
   )
@@ -58,7 +46,7 @@ function ExpiryBtn({ ex, isActive, onClick }: { ex: string; isActive: boolean; o
   const [hover, setHover] = useState(false)
   return (
     <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ padding: '5px 11px', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11.5, background: isActive ? '#ffdee6' : '#f8f4f4', color: isActive ? '#79103d' : '#201e1d', border: `1px solid ${isActive ? '#d6006c' : 'rgba(32,30,29,.16)'}`, borderRadius: 2, cursor: 'pointer' }}>
+      style={{ padding: '5px 11px', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11.5, background: isActive ? '#ffdee6' : (hover ? 'rgba(32,30,29,.06)' : '#f8f4f4'), color: isActive ? '#79103d' : '#201e1d', border: `1px solid ${isActive ? '#d6006c' : hover ? 'rgba(32,30,29,.32)' : 'rgba(32,30,29,.16)'}`, borderRadius: 2, cursor: 'pointer' }}>
       {ex}
     </button>
   )
@@ -72,7 +60,6 @@ export default function InviteModal({ channelTitle, inviteQ, invited, inviteRole
   const canSend = invited.length > 0
   const inviteHint = inviteRole === 'Guest' ? `guest token · expires in ${expiry}` : 'resolved on ensv2 · sepolia'
   const sendLabel = invited.length > 1 ? `Send ${invited.length} invites` : 'Send invite'
-  const suggestions = SUGGESTIONS.filter(s => !invited.includes(s.handle))
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 20, background: 'rgba(45,43,43,.5)', zIndex: 40 }}>
@@ -100,11 +87,6 @@ export default function InviteModal({ channelTitle, inviteQ, invited, inviteRole
               Add
             </button>
           </div>
-          {suggestions.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {suggestions.map(s => <SuggestBtn key={s.id} s={s} onPick={() => { onInviteQChange(s.handle); onAddInvite() }} />)}
-            </div>
-          )}
           {invited.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
               {invited.map(h => <InvitedTag key={h} h={h} onRemove={() => onRemoveInvite(h)} />)}

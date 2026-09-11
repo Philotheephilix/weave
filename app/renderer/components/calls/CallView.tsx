@@ -102,7 +102,7 @@ export default function CallView(props: CallViewProps) {
   ]
 
   const panelOpen = callPanel !== 'none'
-  const callTabs: CallPanelId[] = ['people', 'chat'] as const
+  const callTabs: CallPanelId[] = ['people', 'chat']
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', background: '#eae9e9', animation: 'wv-rise .18s ease-out' }}>

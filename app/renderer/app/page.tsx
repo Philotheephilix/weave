@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { AppState, RailId, ModalId, TabId, ChannelKind, CallPanelId, CallMode, Message, Team, Channel } from '@/lib/types'
+import type { AppState, RailId, Team, Channel } from '@/lib/types'
 import OnboardingScreen from '@/components/onboarding/OnboardingScreen'
 import { startArkivPoller } from '@/lib/arkiv-poller'
 import { useWebRTC } from '@/lib/useWebRTC'
@@ -92,6 +92,12 @@ export default function WeaveApp() {
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const rtc = useWebRTC()
   const activePeerLabelRef = useRef<string | null>(null)
+
+  // Derive org name from handle — must be before any useEffect that uses it in dep arrays
+  const orgName = (() => {
+    const h = identity?.handle ?? ''
+    return h.includes('.') ? h.split('.').slice(1, -2).join('.') : ''
+  })()
 
   // Load identity on mount — check localStorage first, then IPC
   useEffect(() => {
@@ -220,12 +226,6 @@ export default function WeaveApp() {
     toastTimer.current = setTimeout(() => setS(prev => ({ ...prev, toast: null })), 3200)
   }
 
-  // Derive org name from handle: "alice.myorg.weave.eth" → "myorg"
-  const orgName = (() => {
-    const h = identity?.handle ?? ''
-    return h.includes('.') ? h.split('.').slice(1, -2).join('.') : ''
-  })()
-
   // --- Actions ---
   const send = () => {
     const text = s.draft.trim()
@@ -305,11 +305,27 @@ export default function WeaveApp() {
     const channel = s.channel
     const org = orgName
     const handles = [...s.invited]
+    const isGuest = s.inviteRole === 'Guest'
+    const expiry = s.expiry
     setS(prev => ({ ...prev, invited: [], modal: null }))
+    // Add each invitee to the Arkiv channel ACL
     Promise.allSettled(
       handles.map(h => window.weave?.arkiv?.addChannelMember?.({ org, channel, member: h, role }))
     ).catch(() => {})
-    say(`${n} ${n > 1 ? 'invites' : 'invite'} sent · ${s.inviteRole === 'Guest' ? 'guest token expires in ' + s.expiry : s.inviteRole.toLowerCase() + ' role on ensv2'}`)
+    // For Guest role, resolve each handle and mint an expiring ERC-1155 token on-chain
+    if (isGuest) {
+      handles.forEach(async (h) => {
+        try {
+          const resolved = await window.weave?.resolve?.(h)
+          const guestAddress = (resolved as { address?: string } | null)?.address
+          if (!guestAddress) return
+          const guestLabel = h.includes('.') ? h.split('.')[0] : h
+          const orgLabel = org
+          await window.weave?.org?.mintGuestToken?.({ orgLabel, guestLabel, guestAddress, expiryLabel: expiry })
+        } catch { /* best-effort */ }
+      })
+    }
+    say(`${n} ${n > 1 ? 'invites' : 'invite'} sent · ${isGuest ? 'guest token expires in ' + expiry : s.inviteRole.toLowerCase() + ' role on ensv2'}`)
   }
 
   const startMeet = (title: string) => {
