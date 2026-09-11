@@ -264,10 +264,14 @@ async function fetchMembersFromChain(orgName: string): Promise<Array<{ name: str
   const updatedMembers = [...cache.members, ...newMembers]
   saveMemberCache(orgName, {
     members: updatedMembers,
-    lastScannedBlock: Number(currentBlock),
+    lastScannedBlock: Number(block - 1n),  // only advance to what was actually scanned
   })
 
   return updatedMembers
+}
+
+function stripEnsSuffix(label: string): string {
+  return label.replace(/\.weave\.eth$/, '')
 }
 
 function saveIdentity(data: Record<string, unknown>): void {
@@ -625,7 +629,7 @@ export function registerIpcHandlers(
     org: string; channel: string; recipientLabel: string; keyVersion: number
   }) => {
     if (!getArkiv()) return null
-    const normLabel = recipientLabel.replace(/\.weave\.eth$/, '')
+    const normLabel = stripEnsSuffix(recipientLabel)
     const key = await getArkiv()!.fetchChannelKey(org, channel, normLabel, keyVersion, getIdentity().noisePriv)
     return key ? Buffer.from(key).toString('hex') : null
   })
@@ -636,7 +640,7 @@ export function registerIpcHandlers(
     org: string; channel: string; recipientLabel: string
   }) => {
     if (!getArkiv()) return -1
-    return getArkiv()!.getLatestKeyVersion(org, channel, recipientLabel.replace(/\.weave\.eth$/, ''))
+    return getArkiv()!.getLatestKeyVersion(org, channel, stripEnsSuffix(recipientLabel))
   })
 
   ipcMain.handle('weave:arkiv:rotateChannelKey', async (_e, {
@@ -648,8 +652,7 @@ export function registerIpcHandlers(
   }) => {
     if (!getArkiv()) return { ok: false, reason: 'disabled' }
     const newKey = deriveChannelKey()
-    // Normalize: strip .weave.eth so stored recipient matches what poller queries with
-    const normMembers = members.map(m => ({ ...m, label: m.label.replace(/\.weave\.eth$/, '') }))
+    const normMembers = members.map(m => ({ ...m, label: stripEnsSuffix(m.label) }))
     const firstLabel  = normMembers[0]?.label ?? ''
     const currentVer  = await getArkiv()!.getLatestKeyVersion(org, channel, firstLabel)
     const newVersion  = currentVer + 1
@@ -674,7 +677,7 @@ export function registerIpcHandlers(
   }) => {
     if (!getArkiv()) return { ok: false, reason: 'disabled' }
     const saved      = loadIdentity() as { handle?: string } | null
-    const myLabel    = saved?.handle ?? ''
+    const myLabel    = stripEnsSuffix(saved?.handle ?? '')
     const K_channel  = await getArkiv()!.fetchChannelKey(org, channel, myLabel, keyVersion, getIdentity().noisePriv)
     if (!K_channel) throw new Error('No channel key — not a member or key not fetched yet')
     const senderLabel = saved?.handle ?? 'unknown'
@@ -720,9 +723,8 @@ export function registerIpcHandlers(
   }) => {
     if (!getArkiv()) return []
     const saved       = loadIdentity() as { handle?: string } | null
-    // Normalize labels: strip .weave.eth so queries match stored data
-    const myLabel      = (saved?.handle ?? '').replace(/\.weave\.eth$/, '')
-    const normPeerLabel = peerLabel.replace(/\.weave\.eth$/, '')
+    const myLabel       = stripEnsSuffix(saved?.handle ?? '')
+    const normPeerLabel = stripEnsSuffix(peerLabel)
     const peerIdentity = await idMgr.resolveHandle(normPeerLabel)
     if (!peerIdentity) return []
     return getArkiv()!.fetchDMs(
@@ -829,9 +831,8 @@ export function registerIpcHandlers(
     org: string; peerLabel: string; text: string
   }) => {
     const saved       = loadIdentity() as { handle?: string } | null
-    // Normalize labels: strip .weave.eth so storage is consistent
-    const senderLabel = (saved?.handle ?? '').replace(/\.weave\.eth$/, '')
-    const normPeerLabel = peerLabel.replace(/\.weave\.eth$/, '')
+    const senderLabel   = stripEnsSuffix(saved?.handle ?? '')
+    const normPeerLabel = stripEnsSuffix(peerLabel)
 
     // Resolve peer identity (ENS)
     const peerIdentity = await idMgr.resolveHandle(normPeerLabel).catch(() => null)

@@ -1,13 +1,3 @@
-// app/renderer/lib/arkiv-poller.ts
-//
-// Polls Arkiv for new messages on all channels the user belongs to.
-// Runs every 30 seconds. On first open, fetches the last 7 days.
-//
-// Usage:
-//   const stop = await startArkivPoller(orgName, myLabel, ['general', 'eng'], dispatch)
-//   // later:
-//   stop()
-
 export async function startArkivPoller(
   orgName: string,
   myLabel: string,
@@ -37,6 +27,7 @@ export async function startArkivPoller(
       const sinceTimestamp = storedTs ? parseInt(storedTs, 10) : 0
 
       // Fetch from all key versions (0..latest) to cover messages posted under old keys
+      const seen = new Set<string>()
       const allMessages: { id: string; sender: string; timestamp: number; text: string }[] = []
       for (let v = 0; v <= keyVersion; v++) {
         try {
@@ -46,7 +37,9 @@ export async function startArkivPoller(
             sinceTimestamp,
             keyVersion:     v,
           })
-          allMessages.push(...batch)
+          for (const msg of batch) {
+            if (!seen.has(msg.id)) { seen.add(msg.id); allMessages.push(msg) }
+          }
         } catch {
           // key version not decryptable (e.g. rotated without us as member) — skip
         }

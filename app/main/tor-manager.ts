@@ -11,6 +11,13 @@ export interface OnionService {
   port: number          // local port the service maps to
 }
 
+// Tor control protocol: a reply is complete when the last non-empty line
+// starts with a 3-digit code followed by a space.
+function isCompleteReply(buf: string): boolean {
+  const lines = buf.split('\r\n').filter(Boolean)
+  return /^\d{3} /.test(lines[lines.length - 1] ?? '')
+}
+
 export class TorManager {
   private proc: ChildProcess | null = null
   private controlSocket: net.Socket | null = null
@@ -26,16 +33,21 @@ export class TorManager {
   }
 
   private torBinPath(): string {
-    const platform = process.platform
     const base = path.join(__dirname, '..', '..', 'binaries', 'tor')
-    const bundled = platform === 'win32'
-      ? path.join(base, 'windows', 'tor.exe')
-      : platform === 'darwin'
-        ? path.join(base, 'macos', 'tor')
-        : path.join(base, 'linux', 'tor')
+    let bundled: string
+    switch (process.platform) {
+      case 'win32':
+        bundled = path.join(base, 'windows', 'tor.exe')
+        break
+      case 'darwin':
+        bundled = path.join(base, 'macos', 'tor')
+        break
+      default:
+        bundled = path.join(base, 'linux', 'tor')
+    }
     if (fs.existsSync(bundled)) return bundled
-    // Fall back to system Tor (dev / CI environments)
-    const systemPaths = platform === 'win32'
+
+    const systemPaths = process.platform === 'win32'
       ? []
       : ['/opt/homebrew/bin/tor', '/usr/local/bin/tor', '/usr/bin/tor']
     for (const p of systemPaths) {
@@ -58,8 +70,31 @@ export class TorManager {
     ], { stdio: ['ignore', 'pipe', 'pipe'] })
 
     await this._waitForReady()
-    await this._authenticate(this.dataDir)
+    await this._authenticate()
     this.ready = true
+  }
+
+  private _cookieHex(): string {
+    return fs.readFileSync(path.join(this.dataDir, 'control_auth_cookie')).toString('hex')
+  }
+
+  // Raw GETINFO returns 514 before auth, so each probe authenticates on a fresh
+  // socket before querying bootstrap progress.
+  private _probeBootstrap(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const cookie = this._cookieHex()
+      const sock = net.createConnection(this.controlPort, '127.0.0.1')
+      let buf = ''
+      sock.on('data', (d: Buffer) => {
+        buf += d.toString()
+        if (isCompleteReply(buf)) { sock.destroy(); resolve(buf) }
+      })
+      sock.on('error', reject)
+      sock.once('connect', () => {
+        sock.write(`AUTHENTICATE ${cookie}\r\nGETINFO status/bootstrap-phase\r\n`)
+      })
+      setTimeout(() => { sock.destroy(); reject(new Error('timeout')) }, 3000)
+    })
   }
 
   private _waitForReady(): Promise<void> {
@@ -70,44 +105,24 @@ export class TorManager {
       const succeed = () => { if (!done) { done = true; resolve() } }
       const fail    = (e: Error) => { if (!done) { done = true; reject(e) } }
 
-      // Primary: watch stdout for the bootstrap line
+      let stdoutBuf = ''
       this.proc!.stdout!.on('data', (chunk: Buffer) => {
-        if (chunk.toString().includes('Bootstrapped 100%')) succeed()
+        stdoutBuf += chunk.toString()
+        if (stdoutBuf.includes('Bootstrapped 100%')) succeed()
       })
       this.proc!.on('error', fail)
       this.proc!.on('exit', (code) => fail(new Error(`Tor exited with code ${code}`)))
 
-      // Fallback: poll the control port every 2s. Each probe opens a fresh socket,
-      // authenticates with the cookie, then queries bootstrap — avoids "514 auth required".
       const poll = async () => {
         while (!done && Date.now() < deadline) {
           await new Promise(r => setTimeout(r, 2000))
           if (done) break
-          try {
-            const cookiePath = path.join(this.dataDir, 'control_auth_cookie')
-            if (!fs.existsSync(cookiePath)) continue
-            const cookie = fs.readFileSync(cookiePath).toString('hex')
-            const reply = await new Promise<string>((res, rej) => {
-              const sock = net.createConnection(this.controlPort, '127.0.0.1')
-              let buf = ''
-              sock.on('data', (d: Buffer) => {
-                buf += d.toString()
-                const lines = buf.split('\r\n').filter(Boolean)
-                const last = lines[lines.length - 1] ?? ''
-                if (/^\d{3} /.test(last)) { sock.destroy(); res(buf) }
-              })
-              sock.on('error', rej)
-              sock.once('connect', () => {
-                sock.write(`AUTHENTICATE ${cookie}\r\nGETINFO status/bootstrap-phase\r\n`)
-              })
-              setTimeout(() => { sock.destroy(); rej(new Error('timeout')) }, 3000)
-            })
-            if (reply.includes('PROGRESS=100')) { succeed(); break }
-          } catch { /* control port not yet up */ }
+          const reply = await this._probeBootstrap().catch(() => null)
+          if (reply?.includes('PROGRESS=100')) { succeed(); break }
         }
         if (!done) fail(new Error('Tor startup timeout (60s)'))
       }
-      // Start polling after a short delay so the control port has time to open
+      // Delay the first probe so the control port has time to open
       setTimeout(() => { void poll() }, 3000)
     })
   }
@@ -120,10 +135,7 @@ export class TorManager {
       let buf = ''
       const onData = (data: Buffer) => {
         buf += data.toString()
-        // Tor control protocol: response is complete when last non-empty line starts with 3-digit code + space
-        const lines = buf.split('\r\n').filter(Boolean)
-        const last = lines[lines.length - 1] ?? ''
-        if (/^\d{3} /.test(last)) {
+        if (isCompleteReply(buf)) {
           this.controlSocket!.removeListener('data', onData)
           this.controlSocket!.removeListener('error', onError)
           resolve(buf)
@@ -139,11 +151,8 @@ export class TorManager {
     })
   }
 
-  private async _authenticate(dataDir: string): Promise<void> {
-    // Cookie auth: read the cookie file Tor wrote, send as hex.
-    const cookiePath = path.join(dataDir, 'control_auth_cookie')
-    const cookie = fs.readFileSync(cookiePath).toString('hex')
-    const reply = await this._controlCmd(`AUTHENTICATE ${cookie}`)
+  private async _authenticate(): Promise<void> {
+    const reply = await this._controlCmd(`AUTHENTICATE ${this._cookieHex()}`)
     if (!reply.startsWith('250')) throw new Error(`Tor auth failed: ${reply}`)
   }
 

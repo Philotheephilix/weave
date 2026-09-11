@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { AppState, RailId, Team, Channel } from '@/lib/types'
+import type { AppState, RailId, Team, Channel, CallState, CallMode, CallPanelId } from '@/lib/types'
 import OnboardingScreen from '@/components/onboarding/OnboardingScreen'
 import { startArkivPoller } from '@/lib/arkiv-poller'
 import { useTorCall } from '@/lib/useTorCall'
@@ -72,6 +72,16 @@ function getTeamFrom(teams: Team[], state: AppState): Team | undefined {
 function getChanFrom(teams: Team[], state: AppState): Channel | undefined {
   const t = getTeamFrom(teams, state)
   return t?.channels.find(c => c.id === state.channel)
+}
+
+function ringingState(peerLabel: string, kind: string): Pick<AppState, 'call' | 'tick' | 'callMode' | 'callPanel' | 'cam'> {
+  return {
+    call: { state: 'ringing', with: peerLabel, title: `${peerLabel} · ${kind}`, base: 0, people: ['me', peerLabel] },
+    tick: 0,
+    callMode: 'grid',
+    callPanel: 'people',
+    cam: kind === 'video',
+  }
 }
 
 function chanKey(teamId: string, channelId: string) {
@@ -256,11 +266,11 @@ export default function WeaveApp() {
     if (!identity) return
     const handler = (...args: unknown[]) => {
       const payload = args[0] as { from: string; signal: { type?: string; onionAddr?: string } } | undefined
-      if (!payload?.signal || payload.signal.type !== 'call-invite' || !payload.signal.onionAddr) return
+      if (payload?.signal?.type !== 'call-invite' || !payload.signal.onionAddr) return
       const callerLabel = payload.from
       const onionAddr = payload.signal.onionAddr
       activePeerLabelRef.current = callerLabel
-      setS(prev => ({ ...prev, call: { state: 'ringing', with: callerLabel, title: callerLabel + ' · audio', base: 0, people: ['me', callerLabel] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: false }))
+      setS(prev => ({ ...prev, ...ringingState(callerLabel, 'audio') }))
       // Dial out to caller's onion, then start mic+audio pipeline
       window.weave?.call?.initiate({ onionAddr }).then(async () => {
         setS(prev => ({ ...prev, call: prev.call ? { ...prev.call, state: 'live' } : null, tick: 0 }))
@@ -274,10 +284,18 @@ export default function WeaveApp() {
     return () => { window.weave?.off?.('weave:call:signal', handler as (...args: unknown[]) => void) }
   }, [identity, rtc])
 
-  // Auto-transition ringing → live when Noise_XX handshake completes on the caller side
+  // Auto-transition ringing → live when Noise_XX handshake completes (caller side)
   useEffect(() => {
     const unsub = window.weave?.call?.onConnected?.(() => {
-      setS(prev => prev.call?.state === 'ringing' ? { ...prev, call: { ...prev.call, state: 'live' }, tick: 0 } : prev)
+      setS(prev => {
+        if (prev.call?.state === 'ringing') return { ...prev, call: { ...prev.call, state: 'live' }, tick: 0 }
+        // Handshake completed before ringing state was committed — build live state now
+        const peer = activePeerLabelRef.current
+        if (!prev.call && peer) {
+          return { ...prev, call: { state: 'live', with: peer, title: `${peer} · audio`, base: 0, people: ['me', peer] }, tick: 0 }
+        }
+        return prev
+      })
     })
     return () => { unsub?.() }
   }, [])
@@ -491,7 +509,7 @@ export default function WeaveApp() {
 
   const ring = (id: string, kind: string) => {
     activePeerLabelRef.current = id
-    setS(prev => ({ ...prev, call: { state: 'ringing', with: id, title: id + ' · ' + kind, base: 0, people: ['me', id] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: kind === 'video' }))
+    setS(prev => ({ ...prev, ...ringingState(id, kind) }))
     // Go online + signal peer; they dial back and the Noise_XX handshake completes
     rtc.startCall(id).catch((err: Error) => {
       say(`Call failed: ${err?.message ?? 'Tor unavailable'}`)

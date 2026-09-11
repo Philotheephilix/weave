@@ -1,11 +1,3 @@
-/**
- * Tor-only call hook — Noise_XX transport via ghostcall architecture.
- * Replaces useWebRTC. No STUN, no ICE, no WebRTC.
- *
- * Audio pipeline:
- *   mic → ScriptProcessor (256 samples Int16) → IPC → Noise_XX → peer
- *   peer → Noise_XX → IPC → AudioContext buffer source → speakers
- */
 import { useRef, useEffect, useState, useCallback } from 'react'
 
 export interface TorCallHandle {
@@ -24,6 +16,10 @@ export function useTorCall(): TorCallHandle {
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const micEnabledRef = useRef(true)
   const unsubsRef = useRef<Array<() => void>>([])
+
+  const track = useCallback((unsub: (() => void) | undefined) => {
+    if (unsub) unsubsRef.current.push(unsub)
+  }, [])
 
   const teardown = useCallback(() => {
     processorRef.current?.disconnect()
@@ -49,7 +45,7 @@ export function useTorCall(): TorCallHandle {
     audioCtxRef.current = ac
 
     // Play inbound frames from peer
-    const unsubAudio = window.weave?.call?.onAudioFrame((data: ArrayBuffer) => {
+    track(window.weave?.call?.onAudioFrame((data: ArrayBuffer) => {
       const ac2 = audioCtxRef.current
       if (!ac2) return
       const buf = ac2.createBuffer(1, data.byteLength / 2, 16000)
@@ -60,8 +56,7 @@ export function useTorCall(): TorCallHandle {
       src.buffer = buf
       src.connect(ac2.destination)
       src.start()
-    })
-    if (unsubAudio) unsubsRef.current.push(unsubAudio)
+    }))
 
     // Capture mic and pump outbound frames
     let stream: MediaStream
@@ -69,6 +64,8 @@ export function useTorCall(): TorCallHandle {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     } catch (err) {
       console.warn('[TorCall] getUserMedia failed:', err)
+      ac.close().catch(() => {})
+      audioCtxRef.current = null
       return
     }
     micStreamRef.current = stream
@@ -86,24 +83,21 @@ export function useTorCall(): TorCallHandle {
     src.connect(proc)
     proc.connect(ac.destination)
     processorRef.current = proc
-  }, [])
+  }, [track])
 
   // Outbound call: go online, signal peer, then start audio pipeline.
   const startCall = useCallback(async (peerLabel: string) => {
     teardown()
     peerLabelRef.current = peerLabel
 
-    // Subscribe to call events before going online so we don't miss them
-    const unsubConnected = window.weave?.call?.onConnected(({ direction }) => {
+    // Subscribe before going online so no event is missed
+    track(window.weave?.call?.onConnected(({ direction }) => {
       console.log('[TorCall] connected', direction)
       setConnected(true)
-    })
-    if (unsubConnected) unsubsRef.current.push(unsubConnected)
-
-    const unsubError = window.weave?.call?.onError(({ message }) => {
+    }))
+    track(window.weave?.call?.onError(({ message }) => {
       console.warn('[TorCall] error', message)
-    })
-    if (unsubError) unsubsRef.current.push(unsubError)
+    }))
 
     // Go online: create onion service + bind inbound listener
     let myOnionAddr: string | undefined
@@ -125,7 +119,7 @@ export function useTorCall(): TorCallHandle {
         signal: { type: 'call-invite', onionAddr: myOnionAddr },
       }).catch(() => {})
     }
-  }, [teardown, startAudioPipeline])
+  }, [teardown, startAudioPipeline, track])
 
   const endCall = useCallback(() => {
     teardown()
