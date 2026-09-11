@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { AppState, RailId, ModalId, TabId, ChannelKind, CallPanelId, CallMode, Message } from '@/lib/types'
-import { people, initialTeams, initialMsgs, initialDMs, dmOrder, callLog, fileRows, meetings } from '@/lib/mockData'
+import type { AppState, RailId, ModalId, TabId, ChannelKind, CallPanelId, CallMode, Message, Team, Channel } from '@/lib/types'
+import OnboardingScreen from '@/components/onboarding/OnboardingScreen'
 
 import Header from '@/components/layout/Header'
 import NavRail from '@/components/layout/NavRail'
@@ -18,19 +18,20 @@ import CreateChannelModal from '@/components/modals/CreateChannelModal'
 import InviteModal from '@/components/modals/InviteModal'
 import MembersModal from '@/components/modals/MembersModal'
 import SearchPalette from '@/components/modals/SearchPalette'
+import OrgAdminPanel from '@/components/admin/OrgAdminPanel'
 
 const initialState: AppState = {
   rail: 'teams',
-  teamOpen: { design: true, tech: false, people: false },
-  team: 'design',
-  channel: 'critique',
-  dm: 'maya',
+  teamOpen: {},
+  team: '',
+  channel: '',
+  dm: '',
   tab: 'posts',
   filesScope: 'channel',
   activityScope: 'all',
-  msgs: initialMsgs,
-  dms: initialDMs,
-  dmOrder,
+  msgs: {},
+  dms: {},
+  dmOrder: [],
   draft: '',
   threadDraft: '',
   thread: null,
@@ -53,7 +54,7 @@ const initialState: AppState = {
   callMode: 'grid',
   callPanel: 'people',
   callDraft: '',
-  callChat: [{ name: 'Arjun Nair', time: '00:12', text: 'Can you bump the plate offsets one more notch?' }],
+  callChat: [],
   cam: false,
   hand: false,
   captions: false,
@@ -64,24 +65,49 @@ const initialState: AppState = {
   toast: null,
 }
 
-function getTeam(teams: AppState['msgs'], state: AppState) {
-  return initialTeams.find(t => t.id === state.team) || initialTeams[0]
+// teams is stored in component state, not in mockData; getTeam/getChan work from passed-in teams array
+function getTeamFrom(teams: Team[], state: AppState): Team | undefined {
+  return teams.find(t => t.id === state.team)
 }
 
-function getChan(state: AppState) {
-  const t = initialTeams.find(t => t.id === state.team) || initialTeams[0]
-  return t.channels.find(c => c.id === state.channel) || t.channels[0]
+function getChanFrom(teams: Team[], state: AppState): Channel | undefined {
+  const t = getTeamFrom(teams, state)
+  return t?.channels.find(c => c.id === state.channel)
 }
 
-function chanKey(state: AppState) {
-  const ch = getChan(state)
-  return state.team + '/' + ch.id
+function chanKey(teamId: string, channelId: string) {
+  return teamId + '/' + channelId
 }
 
 export default function WeaveApp() {
   const [s, setS] = useState<AppState>(initialState)
+  const [teams, setTeams] = useState<Team[]>([])
+  const [identity, setIdentity] = useState<{ handle: string } | null>(null)
+  const [identityChecked, setIdentityChecked] = useState(false)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Load identity on mount — check localStorage first, then IPC
+  useEffect(() => {
+    const stored = localStorage.getItem('weave_identity')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        setIdentity(parsed)
+        setIdentityChecked(true)
+        return
+      } catch {
+        localStorage.removeItem('weave_identity')
+      }
+    }
+    window.weave?.identity?.load?.().then((id: unknown) => {
+      if (id && typeof id === 'object') {
+        setIdentity(id as { handle: string })
+      }
+    }).catch(() => {}).finally(() => setIdentityChecked(true))
+    if (!window.weave?.identity?.load) setIdentityChecked(true)
+  }, [])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -119,7 +145,7 @@ export default function WeaveApp() {
       const list = [...(s.dms[s.dm] || []), { mine: true, time: 'now', text }]
       setS(prev => ({ ...prev, dms: { ...prev.dms, [prev.dm]: list }, draft: '' }))
     } else {
-      const k = chanKey(s)
+      const k = chanKey(s.team, s.channel)
       const list = [...(s.msgs[k] || []), { id: 'm' + Date.now(), who: 'me', time: 'now', text, reactions: [], replies: [] }]
       setS(prev => ({ ...prev, msgs: { ...prev.msgs, [k]: list }, draft: '' }))
     }
@@ -128,7 +154,7 @@ export default function WeaveApp() {
   const sendThread = () => {
     const text = s.threadDraft.trim()
     if (!text || !s.thread) return
-    const k = chanKey(s)
+    const k = chanKey(s.team, s.channel)
     const list = (s.msgs[k] || []).map(m =>
       m.id === s.thread ? { ...m, replies: [...m.replies, { who: 'me', time: 'now', text }] } : m
     )
@@ -136,7 +162,7 @@ export default function WeaveApp() {
   }
 
   const toggleReaction = (id: string, glyph: string) => {
-    const k = chanKey(s)
+    const k = chanKey(s.team, s.channel)
     const list = (s.msgs[k] || []).map(m => {
       if (m.id !== id) return m
       const rs = [...m.reactions]
@@ -151,11 +177,10 @@ export default function WeaveApp() {
   const createChannel = () => {
     const name = s.newName.trim()
     if (!name) return
-    const teams = initialTeams.map(t => t.id === s.team
+    setTeams(prev => prev.map(t => t.id === s.team
       ? { ...t, channels: [...t.channels, { id: name, name, kind: s.newKind, unread: 0, desc: s.newDesc.trim() || `New ${s.newKind} channel.` }] }
       : t
-    )
-    // We can't mutate initialTeams — update via state-tracked teams (for simplicity, just close & navigate)
+    ))
     setS(prev => ({ ...prev, channel: name, rail: 'teams', tab: 'posts', modal: 'invite', newName: '', newDesc: '' }))
     say('#' + name + ' created · add members to start gossiping history')
   }
@@ -180,8 +205,7 @@ export default function WeaveApp() {
   }
 
   const ring = (id: string, kind: string) => {
-    const p = people[id] || people.me
-    setS(prev => ({ ...prev, call: { state: 'ringing', with: id, title: p.name + ' · ' + kind, base: 0, people: ['me', id] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: kind === 'video' }))
+    setS(prev => ({ ...prev, call: { state: 'ringing', with: id, title: id + ' · ' + kind, base: 0, people: ['me', id] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: kind === 'video' }))
   }
 
   const toggleShare = () => {
@@ -192,7 +216,7 @@ export default function WeaveApp() {
 
   const joinVoice = (teamId: string) => {
     const on = s.joinedVoice && s.voiceTeam === teamId
-    const t = initialTeams.find(x => x.id === teamId)
+    const t = teams.find(x => x.id === teamId)
     setS(prev => ({ ...prev, joinedVoice: !on, voiceTeam: on ? null : teamId }))
     if (t?.voice) say(on ? 'Left ' + t.voice.name : 'Connected to ' + t.voice.name + ' · Opus over Tor')
   }
@@ -220,7 +244,7 @@ export default function WeaveApp() {
   const buildPaletteResults = (pq: string) => {
     const pool: Array<{ label: string; meta: string; kind: string; icon: string; bg: string; go: () => void }> = []
     const pqL = pq.trim().toLowerCase()
-    initialTeams.forEach(tm => tm.channels.forEach(c => pool.push({
+    teams.forEach(tm => tm.channels.forEach(c => pool.push({
       label: '#' + c.name,
       meta: tm.name + ' · ' + c.kind,
       kind: 'channel',
@@ -228,16 +252,8 @@ export default function WeaveApp() {
       bg: 'transparent',
       go: () => setS(prev => ({ ...prev, rail: 'teams', team: tm.id, channel: c.id, tab: 'posts', palette: false, thread: null, teamOpen: { ...prev.teamOpen, [tm.id]: true } }))
     })))
-    Object.entries(people).filter(([k]) => k !== 'me').forEach(([k, p]) => pool.push({
-      label: p.name, meta: p.handle, kind: 'person', icon: 'ph-user', bg: 'transparent',
-      go: () => setS(prev => ({ ...prev, rail: 'chat', dm: k, palette: false }))
-    }))
-    fileRows.forEach(f => pool.push({
-      label: f.name, meta: f.cid + ' · ' + f.size, kind: 'file', icon: 'ph-file', bg: 'transparent',
-      go: () => setS(prev => ({ ...prev, rail: 'files', palette: false }))
-    }))
     pool.push({ label: 'Meet now', meta: 'start a full-mesh room', kind: 'action', icon: 'ph-video-camera', bg: 'transparent', go: () => { setS(prev => ({ ...prev, palette: false })); startMeet('Meet now') } })
-    pool.push({ label: 'Create a channel', meta: 'in ' + (initialTeams.find(t => t.id === s.team)?.name || ''), kind: 'action', icon: 'ph-plus-circle', bg: 'transparent', go: () => setS(prev => ({ ...prev, palette: false, modal: 'create' })) })
+    pool.push({ label: 'Create a channel', meta: 'in ' + (teams.find(t => t.id === s.team)?.name || ''), kind: 'action', icon: 'ph-plus-circle', bg: 'transparent', go: () => setS(prev => ({ ...prev, palette: false, modal: 'create' })) })
 
     const filtered = pqL
       ? pool.filter(r => (r.label + ' ' + r.meta).toLowerCase().includes(pqL))
@@ -245,14 +261,15 @@ export default function WeaveApp() {
     return filtered.slice(0, 8).map((r, i) => ({ ...r, bg: i === 0 && pqL ? '#e9f8ff' : 'transparent' }))
   }
 
-  const currentTeam = initialTeams.find(t => t.id === s.team) || initialTeams[0]
-  const currentChan = currentTeam.channels.find(c => c.id === s.channel) || currentTeam.channels[0]
-  const chanMsgs = s.msgs[s.team + '/' + currentChan.id] || []
+  const currentTeam = getTeamFrom(teams, s)
+  const currentChan = currentTeam ? getChanFrom(teams, s) : undefined
+  const chanMsgs = currentTeam && currentChan ? (s.msgs[chanKey(currentTeam.id, currentChan.id)] || []) : []
   const inChannel = s.rail === 'teams'
   const inDM = s.rail === 'chat'
   const callActive = !!s.call && s.call.state === 'live'
   const isRinging = !!s.call && s.call.state === 'ringing'
-  const ringPerson = (s.call?.state === 'ringing' && s.call.with) ? (people[s.call.with] || people.me) : null
+  const ringWith = s.call?.state === 'ringing' ? s.call.with : undefined
+  const ringPerson = ringWith ? { name: ringWith, initials: ringWith.slice(0, 2).toUpperCase(), tint: '#eae9e9', ink: '#444141' } : null
 
   const activityItems = [
     { title: 'Priya mentioned you in #critique', body: '"…@ravi can you confirm the halftone scope before the onboarding review?"', icon: 'ph-at', tint: '#e9f8ff', ink: '#004961', time: '09:31', weight: 600, nav: { rail: 'teams' as RailId, team: 'design', channel: 'critique' } },
@@ -274,13 +291,43 @@ export default function WeaveApp() {
 
   const memberIds = ['me', 'maya', 'arjun', 'priya', 'devika', 'kabir', 'tarun', 'notes']
 
+  if (!identityChecked) return null
+
+  if (!identity) {
+    return (
+      <OnboardingScreen
+        onComplete={(data) => {
+          setIdentity(data as { handle: string })
+        }}
+      />
+    )
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0,1fr)', height: '100vh', minHeight: 600, background: '#f3f2f2', overflow: 'hidden' }}>
-      <Header
-        onOpenPalette={() => setS(prev => ({ ...prev, palette: true, pq: '' }))}
-        onMeetNow={() => startMeet('Meet now')}
-        onOpenMembers={() => setS(prev => ({ ...prev, modal: 'members' }))}
-      />
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <Header
+          onOpenPalette={() => setS(prev => ({ ...prev, palette: true, pq: '' }))}
+          onMeetNow={() => startMeet('Meet now')}
+          onOpenMembers={() => setS(prev => ({ ...prev, modal: 'members' }))}
+        />
+        {identity?.handle?.startsWith('admin.') && (
+          <button
+            onClick={() => setShowAdminPanel(true)}
+            className="admin-btn"
+            title="Org Admin Panel"
+            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(32,30,29,.7)', padding: '5px 7px', borderRadius: 6, fontSize: 18 }}
+          >
+            <i className="ph-duotone ph-gear" />
+          </button>
+        )}
+      </div>
+      {showAdminPanel && identity && (
+        <OrgAdminPanel
+          adminHandle={identity.handle}
+          onClose={() => setShowAdminPanel(false)}
+        />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '74px 262px minmax(0,1fr)', minHeight: 0, borderTop: '1px solid rgba(32,30,29,.1)' }}>
         <NavRail
@@ -291,7 +338,7 @@ export default function WeaveApp() {
 
         <Sidebar
           rail={s.rail}
-          teams={initialTeams}
+          teams={teams}
           teamOpen={s.teamOpen}
           activeTeam={s.team}
           activeChannel={s.channel}
@@ -301,7 +348,7 @@ export default function WeaveApp() {
           mic={s.mic}
           dmOrder={s.dmOrder}
           dms={s.dms}
-          callLog={callLog}
+          callLog={[]}
           filesScope={s.filesScope}
           activityScope={s.activityScope}
           onToggleTeam={id => setS(prev => ({ ...prev, teamOpen: { ...prev.teamOpen, [id]: !prev.teamOpen[id] }, team: id }))}
@@ -317,7 +364,17 @@ export default function WeaveApp() {
         />
 
         <main style={{ position: 'relative', display: 'flex', minHeight: 0, background: '#f3f2f2' }}>
-          {inChannel && !callActive && !isRinging && (
+          {inChannel && !callActive && !isRinging && !currentTeam && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(32,30,29,.5)', fontSize: 14 }}>
+              No channels yet. Your org admin will add channels.
+            </div>
+          )}
+          {inChannel && !callActive && !isRinging && currentTeam && !currentChan && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(32,30,29,.5)', fontSize: 14 }}>
+              Select a channel to start chatting
+            </div>
+          )}
+          {inChannel && !callActive && !isRinging && currentTeam && currentChan && (
             <ChannelView
               team={currentTeam}
               channel={currentChan}
@@ -337,12 +394,17 @@ export default function WeaveApp() {
               onSendThread={sendThread}
               onOpenMembers={() => setS(prev => ({ ...prev, modal: 'members' }))}
               onOpenInvite={() => setS(prev => ({ ...prev, modal: 'invite' }))}
-              onStartCall={() => startMeet('#' + currentChan.name + ' · Meet now')}
+              onStartCall={() => startMeet('#' + currentChan!.name + ' · Meet now')}
               showPrivacy={true}
             />
           )}
 
-          {inDM && !callActive && !isRinging && (
+          {inDM && !callActive && !isRinging && !s.dm && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(32,30,29,.5)', fontSize: 14 }}>
+              No direct messages yet
+            </div>
+          )}
+          {inDM && !callActive && !isRinging && s.dm && (
             <DMView
               dmId={s.dm}
               messages={s.dms[s.dm] || []}
@@ -357,7 +419,7 @@ export default function WeaveApp() {
 
           {s.rail === 'calls' && !callActive && !isRinging && (
             <CallsPageView
-              callLog={callLog}
+              callLog={[]}
               dial={s.dial}
               onKeypad={k => setS(prev => ({ ...prev, dial: prev.dial + k }))}
               onDialBack={() => setS(prev => ({ ...prev, dial: prev.dial.slice(0, -1) }))}
@@ -367,7 +429,7 @@ export default function WeaveApp() {
           )}
 
           {s.rail === 'files' && !callActive && !isRinging && (
-            <FilesView files={fileRows} />
+            <FilesView files={[]} />
           )}
 
           {s.rail === 'activity' && !callActive && !isRinging && (
@@ -376,7 +438,7 @@ export default function WeaveApp() {
 
           {s.rail === 'meet' && !callActive && !isRinging && (
             <MeetView
-              meetings={meetings}
+              meetings={[]}
               joinCode={s.joinCode}
               onJoinCodeChange={v => setS(prev => ({ ...prev, joinCode: v }))}
               onJoin={title => startMeet(title)}
@@ -429,7 +491,7 @@ export default function WeaveApp() {
       {/* Modals */}
       {s.modal === 'create' && (
         <CreateChannelModal
-          teamName={currentTeam.name}
+          teamName={currentTeam?.name || ''}
           newName={s.newName}
           newDesc={s.newDesc}
           newKind={s.newKind}
@@ -443,7 +505,7 @@ export default function WeaveApp() {
 
       {s.modal === 'invite' && (
         <InviteModal
-          channelTitle={'#' + currentChan.name}
+          channelTitle={'#' + (currentChan?.name || '')}
           inviteQ={s.inviteQ}
           invited={s.invited}
           inviteRole={s.inviteRole}
@@ -460,13 +522,13 @@ export default function WeaveApp() {
 
       {s.modal === 'members' && (
         <MembersModal
-          channelTitle={'#' + currentChan.name}
-          teamMembers={currentTeam.members}
+          channelTitle={'#' + (currentChan?.name || '')}
+          teamMembers={currentTeam?.members || 0}
           memberIds={memberIds}
           removed={s.removed}
           roleOverride={s.roleOverride}
           onSetRole={(id, role) => setS(prev => ({ ...prev, roleOverride: { ...prev.roleOverride, [id]: role } }))}
-          onRemove={id => { setS(prev => ({ ...prev, removed: { ...prev.removed, [id]: true } })); say((id === 'me' ? 'You' : people[id]?.name || id) + ' removed from #' + currentChan.name) }}
+          onRemove={id => { setS(prev => ({ ...prev, removed: { ...prev.removed, [id]: true } })); say((id === 'me' ? 'You' : id) + ' removed from #' + (currentChan?.name || '')) }}
           onOpenInvite={() => setS(prev => ({ ...prev, modal: 'invite' }))}
           onClose={() => setS(prev => ({ ...prev, modal: null }))}
         />

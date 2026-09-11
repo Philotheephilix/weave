@@ -1,7 +1,10 @@
 'use client'
 import { useState } from 'react'
 import type { RailId, Team, DMMessage, CallLogEntry } from '@/lib/types'
-import { people } from '@/lib/mockData'
+
+function getPerson(id: string) {
+  return { name: id, initials: (id || '?').slice(0, 2).toUpperCase(), tint: '#eae9e9', ink: '#444141', role: 'Member', handle: id, presence: '#9b9797' as const }
+}
 
 interface SidebarProps {
   rail: RailId
@@ -85,7 +88,7 @@ function TeamRow({ tm, isOpen, activeTeam, activeChannel, joinedVoice, voiceTeam
             <div style={{ marginTop: 6 }}>
               <VoiceRoomItem name={tm.voice.name} count={voiceCount} inThisVoice={inThisVoice} onClick={onJoinVoice} />
               {tm.voice.people.concat(inThisVoice ? ['me'] : []).map(id => {
-                const p = people[id] || people.me
+                const p = getPerson(id)
                 const muted = id === 'me' ? !mic : id === 'arjun'
                 return (
                   <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 8px 3px 27px' }}>
@@ -105,8 +108,8 @@ function TeamRow({ tm, isOpen, activeTeam, activeChannel, joinedVoice, voiceTeam
 
 function DMItem({ id, dmData, isActive, onClick }: { id: string; dmData: DMMessage[]; isActive: boolean; onClick: () => void }) {
   const [hover, setHover] = useState(false)
-  const p = people[id]
-  if (!p) return null
+  const p = getPerson(id)
+  if (!id) return null
   const last = dmData[dmData.length - 1]
   const preview = last ? (last.mine ? 'You: ' : '') + last.text : ''
   return (

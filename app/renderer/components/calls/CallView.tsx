@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 import type { CallState, CallPanelId, CallMode } from '@/lib/types'
-import { people } from '@/lib/mockData'
+
+const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
+function getPerson(id: string) { return FALLBACK_PERSON }
 
 function CtlBtn({ label, icon, on, act }: { label: string; icon: string; on: boolean; act: () => void }) {
   const [hover, setHover] = useState(false)
@@ -51,7 +53,7 @@ interface CallViewProps {
 }
 
 function mkTile(id: string, mic: boolean, cam: boolean, hand: boolean, callMode: CallMode) {
-  const p = people[id] || people.me
+  const p = getPerson(id)
   const isMe = id === 'me'
   const muted = isMe ? !mic : id === 'arjun'
   const speaking = !isMe && id === 'maya' && callMode !== 'present'

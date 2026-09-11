@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 import type { Message } from '@/lib/types'
-import { people } from '@/lib/mockData'
+
+const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
+function getPerson(id: string) { return FALLBACK_PERSON }
 
 interface MessageItemProps {
   message: Message
@@ -15,7 +17,7 @@ export default function MessageItem({ message: m, rowPad, onToggleReaction, onOp
   const [rowHover, setRowHover] = useState(false)
   const [reactHover, setReactHover] = useState(false)
   const [replyHover, setReplyHover] = useState(false)
-  const p = people[m.who] || people.me
+  const p = getPerson(m.who)
   const replyLabel = m.replies.length ? `${m.replies.length} replies` : 'Reply in thread'
 
   return (

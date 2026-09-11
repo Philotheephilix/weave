@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 import type { Message } from '@/lib/types'
-import { people } from '@/lib/mockData'
+
+const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
+function getPerson(id: string) { return FALLBACK_PERSON }
 
 interface ThreadPanelProps {
   message: Message
@@ -14,7 +16,7 @@ interface ThreadPanelProps {
 export default function ThreadPanel({ message: m, draft, onDraftChange, onSendReply, onClose }: ThreadPanelProps) {
   const [closeHover, setCloseHover] = useState(false)
   const [replyHover, setReplyHover] = useState(false)
-  const p = people[m.who] || people.me
+  const p = getPerson(m.who)
 
   return (
     <div style={{ width: 352, flex: 'none', display: 'flex', flexDirection: 'column', minHeight: 0, borderLeft: '1px solid rgba(32,30,29,.1)', background: '#f8f4f4' }}>
@@ -38,7 +40,7 @@ export default function ThreadPanel({ message: m, draft, onDraftChange, onSendRe
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12 }}>
           {m.replies.map((r, i) => {
-            const rp = people[r.who] || people.me
+            const rp = getPerson(r.who)
             return (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0,1fr)', gap: 9 }}>
                 <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, background: rp.tint, color: rp.ink, fontSize: 10.5, fontWeight: 600, borderRadius: 2 }}>{rp.initials}</span>

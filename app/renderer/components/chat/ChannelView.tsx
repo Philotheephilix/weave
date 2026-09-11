@@ -1,7 +1,10 @@
 'use client'
 import { useState } from 'react'
 import type { Message, Channel, Team, TabId } from '@/lib/types'
-import { people, fileRows } from '@/lib/mockData'
+
+const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
+function getPerson(id: string) { return FALLBACK_PERSON }
+const fileRows: never[] = []
 import MessageList from './MessageList'
 import MessageComposer from './MessageComposer'
 import ThreadPanel from './ThreadPanel'
@@ -51,7 +54,7 @@ export default function ChannelView(props: ChannelViewProps) {
   const chTagBg = ch.kind === 'standard' ? '#eae7e7' : ch.kind === 'private' ? '#fff1f4' : '#e9f8ff'
   const chTagInk = ch.kind === 'standard' ? '#444141' : ch.kind === 'private' ? '#aa0b56' : '#004961'
 
-  const facepile = ['maya', 'arjun', 'priya', 'me'].map(id => people[id] || people.me)
+  const facepile = ['maya', 'arjun', 'priya', 'me'].map(id => getPerson(id))
   const threadMessage = threadId ? messages.find(m => m.id === threadId) : null
 
   const tabs: { id: TabId; label: string }[] = [

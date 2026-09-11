@@ -27,12 +27,43 @@ export interface StealthResult {
   ephemeralPub: Uint8Array
 }
 
+export interface OrgCreateResult {
+  ensName: string
+  adminEns: string
+  error?: string
+}
+
+export interface OrgEnrollResult {
+  ensName: string
+  error?: string
+}
+
+export interface OrgMember {
+  name: string
+  address: string
+}
+
+export interface LoginResult {
+  success: boolean
+  identity?: object
+  error?: string
+}
+
 // Augment window with the weave bridge
 declare global {
   interface Window {
     weave: {
       identity: {
         get: () => Promise<WeaveIdentityInfo>
+        generateSeed: () => Promise<{ seedPhrase: string[] }>
+        save: (data: any) => Promise<{ success: boolean }>
+        load: () => Promise<{ handle: string } | null>
+        login: (args: { handle: string; seedPhrase: string[] }) => Promise<LoginResult>
+      }
+      org: {
+        create: (args: { orgName: string; seedPhrase: string[] }) => Promise<OrgCreateResult>
+        enroll: (args: { orgName: string; memberName: string; memberAddress: string }) => Promise<OrgEnrollResult>
+        listMembers: (orgName: string) => Promise<OrgMember[]>
       }
       resolve: (label: string) => Promise<ResolvedIdentity | null>
       notifications: {

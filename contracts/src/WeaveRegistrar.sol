@@ -12,10 +12,17 @@ contract WeaveRegistrar {
 
     address public owner;
 
+    // orgLabel => admin address (the account that deployed the org)
+    mapping(bytes32 => address) public orgAdmins;
+
     event Registered(string label, address indexed owner, string tier);
+    event OrgRegistered(string orgLabel, address indexed admin);
+    event MemberEnrolled(string orgLabel, string memberLabel, address indexed memberAddr);
     event OwnershipTransferred(address indexed prev, address indexed next);
 
     error NotOwner();
+    error NotOrgAdmin();
+    error OrgNotFound();
 
     constructor(address _registry, address _resolver) {
         registry = WeavePermissionedRegistry(_registry);
@@ -31,6 +38,54 @@ contract WeaveRegistrar {
     function transferOwnership(address newOwner) external onlyOwner {
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
+    }
+
+    // Register an org: creates orgname.weave.eth (member token) +
+    // admin.orgname.weave.eth (operator token, transferable).
+    // Caller becomes the org admin. No contract-owner permission required.
+    function registerOrg(
+        string calldata orgLabel,
+        address adminAddr,
+        WeaveWildcardResolver.WeaveIdentity calldata adminIdentity
+    ) external {
+        // Org subname: orgLabel (e.g. "google")
+        bytes32 orgLh = keccak256(bytes(orgLabel));
+        registry.registerMember(orgLabel, adminAddr);
+        resolver.setIdentity(orgLh, adminIdentity);
+
+        // Admin subname: "admin." + orgLabel (e.g. "admin.google")
+        string memory adminLabel = string(abi.encodePacked("admin.", orgLabel));
+        bytes32 adminLh = keccak256(bytes(adminLabel));
+        registry.registerOperator(adminLabel, adminAddr);
+        resolver.setIdentity(adminLh, adminIdentity);
+
+        orgAdmins[orgLh] = adminAddr;
+
+        emit OrgRegistered(orgLabel, adminAddr);
+        emit Registered(orgLabel, adminAddr, "org");
+        emit Registered(adminLabel, adminAddr, "admin");
+    }
+
+    // Enroll a member into an org. Only callable by the org's admin address.
+    // Creates memberLabel.orgLabel (e.g. "philo.google") as a member token.
+    function enrollMember(
+        string calldata orgLabel,
+        string calldata memberLabel,
+        address memberAddr,
+        WeaveWildcardResolver.WeaveIdentity calldata memberIdentity
+    ) external {
+        bytes32 orgLh = keccak256(bytes(orgLabel));
+        if (orgAdmins[orgLh] == address(0)) revert OrgNotFound();
+        if (orgAdmins[orgLh] != msg.sender) revert NotOrgAdmin();
+
+        // Full label: "philo.google"
+        string memory fullLabel = string(abi.encodePacked(memberLabel, ".", orgLabel));
+        bytes32 fullLh = keccak256(bytes(fullLabel));
+        registry.registerMember(fullLabel, memberAddr);
+        resolver.setIdentity(fullLh, memberIdentity);
+
+        emit MemberEnrolled(orgLabel, memberLabel, memberAddr);
+        emit Registered(fullLabel, memberAddr, "member");
     }
 
     // Only contract owner can register — prevents arbitrary self-registration

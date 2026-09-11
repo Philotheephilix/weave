@@ -1,7 +1,10 @@
 'use client'
 import { useState } from 'react'
 import type { DMMessage } from '@/lib/types'
-import { people } from '@/lib/mockData'
+
+function getPerson(id: string) {
+  return { name: id, initials: (id || '?').slice(0, 2).toUpperCase(), tint: '#eae9e9', ink: '#444141', role: 'Member', handle: id, presence: '#9b9797' as const }
+}
 import MessageComposer from './MessageComposer'
 
 interface DMViewProps {
@@ -16,7 +19,7 @@ interface DMViewProps {
 }
 
 export default function DMView({ dmId, messages, draft, onDraft, onSend, onStartAudioCall, onStartVideoCall, onOpenMembers }: DMViewProps) {
-  const p = people[dmId] || people.me
+  const p = getPerson(dmId)
   const [audioHover, setAudioHover] = useState(false)
   const [videoHover, setVideoHover] = useState(false)
   const [infoHover, setInfoHover] = useState(false)

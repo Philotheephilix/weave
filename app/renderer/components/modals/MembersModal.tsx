@@ -1,6 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { people } from '@/lib/mockData'
+
+function getPerson(id: string) {
+  return { name: id, initials: (id || '?').slice(0, 2).toUpperCase(), tint: '#eae9e9', ink: '#444141', role: 'Member', handle: id, presence: '#9b9797' as const }
+}
 
 interface MembersModalProps {
   channelTitle: string
@@ -22,7 +25,7 @@ function MemberRow({ id, roleOverride, onSetRole, onRemove }: {
 }) {
   const [rowHover, setRowHover] = useState(false)
   const [rmHover, setRmHover] = useState(false)
-  const p = people[id] || people.me
+  const p = getPerson(id)
   const role = roleOverride[id] || p.role.split(' · ')[0]
 
   function presenceStatus() {

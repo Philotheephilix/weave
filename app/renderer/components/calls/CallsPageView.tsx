@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 import type { CallLogEntry } from '@/lib/types'
-import { people } from '@/lib/mockData'
+
+const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
+function getPerson(id: string) { return FALLBACK_PERSON }
 
 interface CallsPageViewProps {
   callLog: CallLogEntry[]
@@ -27,7 +29,7 @@ function KeypadBtn({ k, onPress }: { k: string; onPress: () => void }) {
 function CallLogRow({ entry, onCallBack }: { entry: CallLogEntry; onCallBack: () => void }) {
   const [rowHover, setRowHover] = useState(false)
   const [cbHover, setCbHover] = useState(false)
-  const p = people[entry.id] || people.me
+  const p = getPerson(entry.id)
   const icon = entry.dir === 'in' ? 'ph-phone-incoming' : entry.dir === 'out' ? 'ph-phone-outgoing' : 'ph-phone-x'
   const color = entry.dir === 'missed' ? '#aa0b56' : '#006786'
   return (
