@@ -2,9 +2,6 @@
 import { useState } from 'react'
 import type { Message, Channel, Team, TabId } from '@/lib/types'
 
-const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
-function getPerson(id: string) { return FALLBACK_PERSON }
-const fileRows: never[] = []
 import MessageList from './MessageList'
 import MessageComposer from './MessageComposer'
 import ThreadPanel from './ThreadPanel'
@@ -54,13 +51,11 @@ export default function ChannelView(props: ChannelViewProps) {
   const chTagBg = ch.kind === 'standard' ? '#eae7e7' : ch.kind === 'private' ? '#fff1f4' : '#e9f8ff'
   const chTagInk = ch.kind === 'standard' ? '#444141' : ch.kind === 'private' ? '#aa0b56' : '#004961'
 
-  const facepile: never[] = []
   const threadMessage = threadId ? messages.find(m => m.id === threadId) : null
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'posts', label: 'Posts' },
     { id: 'files', label: 'Files' },
-    { id: 'board', label: 'Whiteboard' },
   ]
 
   const [meetNowHover, setMeetNowHover] = useState(false)
@@ -78,10 +73,7 @@ export default function ChannelView(props: ChannelViewProps) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <button onClick={props.onOpenMembers} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: 'transparent' }} title="Members">
-              {facepile.map((p, i) => (
-                <span key={i} style={{ display: 'grid', placeItems: 'center', width: 27, height: 27, marginLeft: i > 0 ? -5 : 0, background: p.tint, color: p.ink, fontSize: 10, fontWeight: 600, borderRadius: 2, boxShadow: '0 0 0 2px #f3f2f2' }}>{p.initials}</span>
-              ))}
-              <span style={{ marginLeft: 5, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10.5, color: 'rgba(32,30,29,.72)' }}>{team.members} members</span>
+              <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10.5, color: 'rgba(32,30,29,.72)' }}>{team.members} members</span>
             </button>
             <button
               onClick={props.onStartCall}
@@ -126,8 +118,6 @@ export default function ChannelView(props: ChannelViewProps) {
               rowGap={rowGap}
               rowPad={rowPad}
               emptyTitle={`You created #${ch.name}`}
-              someoneTyping={ch.id === 'critique'}
-              typingLabel="Maya is typing"
               onToggleReaction={props.onToggleReaction}
               onOpenThread={props.onOpenThread}
               onOpenInvite={props.onOpenInvite}
@@ -145,48 +135,8 @@ export default function ChannelView(props: ChannelViewProps) {
 
         {/* Files tab */}
         {tab === 'files' && (
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 20px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr>
-                  {['Name', 'Shared by', 'CID', 'Size', ''].map((h, i) => (
-                    <th key={i} style={{ textAlign: 'left', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(32,30,29,.66)', padding: 10, borderBottom: '1px solid rgba(32,30,29,.14)', fontWeight: 600 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {fileRows.map((f, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: 10, borderBottom: '1px solid rgba(32,30,29,.08)' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                        <i className={`ph-duotone ${f.icon}`} style={{ fontSize: 18, color: '#006786' }}></i>
-                        <span style={{ fontWeight: 600 }}>{f.name}</span>
-                      </span>
-                    </td>
-                    <td style={{ padding: 10, borderBottom: '1px solid rgba(32,30,29,.08)' }}>{f.by}</td>
-                    <td style={{ padding: 10, borderBottom: '1px solid rgba(32,30,29,.08)', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11, color: 'rgba(32,30,29,.72)' }}>{f.cid}</td>
-                    <td style={{ padding: 10, borderBottom: '1px solid rgba(32,30,29,.08)', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11 }}>{f.size}</td>
-                    <td style={{ padding: 10, borderBottom: '1px solid rgba(32,30,29,.08)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 10, letterSpacing: '.04em', padding: '3px 7px', background: '#e9f8ff', color: '#004961', borderRadius: 2 }}>encrypted</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Board tab */}
-        {tab === 'board' && (
-          <div style={{ flex: 1, minHeight: 0, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10, color: '#006786' }}>yjs crdt · 3 cursors · version history local</span>
-              <div style={{ flex: 1 }}></div>
-              <button onClick={props.onStartCall} style={{ fontWeight: 600, fontSize: 13.5, padding: '6px 12px', border: '1px solid rgba(32,30,29,.14)', borderRadius: 2, cursor: 'pointer', background: 'transparent' }}>Present board</button>
-            </div>
-            <div style={{ flex: 1, minHeight: 220, display: 'grid', placeItems: 'center', background: 'repeating-linear-gradient(90deg,#eceaea 0 1px,#f3f2f2 1px 22px),repeating-linear-gradient(0deg,#eceaea 0 1px,#f3f2f2 1px 22px)', border: '1px solid rgba(32,30,29,.12)' }}>
-              <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11, color: 'rgba(32,30,29,.7)', textAlign: 'center' }}>whiteboard canvas<br />drop the Yjs board here</span>
-            </div>
+          <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center', padding: '18px 20px' }}>
+            <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 12, color: 'rgba(32,30,29,.5)' }}>File sharing coming soon</span>
           </div>
         )}
       </div>

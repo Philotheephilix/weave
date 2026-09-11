@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { DMMessage } from '@/lib/types'
 import { ensLabel, ensInitials, ensTint } from '@/lib/ens-display'
 import MessageComposer from './MessageComposer'
@@ -16,19 +16,43 @@ interface DMViewProps {
 }
 
 export default function DMView({ dmId, messages, draft, onDraft, onSend, onStartAudioCall, onStartVideoCall, onOpenMembers }: DMViewProps) {
+  const [presenceColor, setPresenceColor] = useState<string>('#9b9797')
+  const [dmStatus, setDmStatus] = useState<string>(dmId === 'notes' ? 'Agent · scoped to 2 channels' : 'Direct message')
+  const [fingerprint, setFingerprint] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (dmId === 'notes') {
+      setDmStatus('Agent · scoped to 2 channels')
+      setPresenceColor('#9b9797')
+      setFingerprint(null)
+      return
+    }
+    setDmStatus('Direct message')
+    setPresenceColor('#9b9797')
+    setFingerprint(null)
+    let cancelled = false
+    window.weave?.resolve(dmId).then((meta) => {
+      if (cancelled || !meta) return
+      if (meta.noisePub && meta.noisePub.length > 0) {
+        // Derive a short display fingerprint from the resolved Noise public key
+        const hex = Array.from(meta.noisePub).map((b: number) => b.toString(16).padStart(2, '0')).join('')
+        setFingerprint(`${hex.slice(0, 4)}…${hex.slice(-4)}`)
+      }
+    }).catch(() => { /* peer not yet resolvable */ })
+    return () => { cancelled = true }
+  }, [dmId])
+
   const p = {
     name: ensLabel(dmId),
     initials: ensInitials(dmId),
     tint: ensTint(dmId),
     ink: '#444141',
     handle: dmId,
-    presence: '#9b9797' as const,
+    presence: presenceColor,
   }
   const [audioHover, setAudioHover] = useState(false)
   const [videoHover, setVideoHover] = useState(false)
   const [infoHover, setInfoHover] = useState(false)
-
-  const dmStatus = dmId === 'notes' ? 'Agent · scoped to 2 channels' : 'Available · onion reachable · 3 hops'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0 }}>
@@ -59,9 +83,11 @@ export default function DMView({ dmId, messages, draft, onDraft, onSend, onStart
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 20px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
-          <div style={{ alignSelf: 'center', marginBottom: 6, padding: '5px 10px', background: '#e9f8ff', borderRadius: 2, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, color: '#004961', textAlign: 'center' }}>
-            direct · noise_xx handshake verified · fingerprint 8f2c…a91d
-          </div>
+          {fingerprint && (
+            <div style={{ alignSelf: 'center', marginBottom: 6, padding: '5px 10px', background: '#e9f8ff', borderRadius: 2, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, color: '#004961', textAlign: 'center' }}>
+              direct · noise_xx handshake verified · fingerprint {fingerprint}
+            </div>
+          )}
           {messages.map((m, i) => {
             const align = m.mine ? 'flex-end' : 'flex-start'
             return (

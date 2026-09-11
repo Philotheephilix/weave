@@ -23,6 +23,7 @@ interface SidebarProps {
   onToggleMic: () => void
   onLeaveVoice: () => void
   onOpenCreate: () => void
+  onOpenNewDM: () => void
   onOpenPalette: () => void
   isAdmin: boolean
   onEnrollMember: () => void
@@ -125,31 +126,17 @@ function DMItem({ id, dmData, isActive, onClick }: { id: string; dmData: DMMessa
 }
 
 function CallLogItem({ entry }: { entry: CallLogEntry }) {
-  const [hover, setHover] = useState(false)
   const icon = entry.dir === 'in' ? 'ph-phone-incoming' : entry.dir === 'out' ? 'ph-phone-outgoing' : 'ph-phone-x'
   const color = entry.dir === 'missed' ? '#aa0b56' : '#006786'
   return (
-    <button onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 8px', borderRadius: 2, textAlign: 'left', background: hover ? 'rgba(32,30,29,.06)' : 'transparent', cursor: 'pointer', width: '100%' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 8px', borderRadius: 2, textAlign: 'left', width: '100%' }}>
       <i className={`ph-duotone ${icon}`} style={{ fontSize: 16, color }}></i>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 13.5, fontWeight: entry.dir === 'missed' ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.name}</span>
         <span style={{ display: 'block', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10, color: 'rgba(32,30,29,.68)' }}>{entry.meta}</span>
       </span>
       <span style={{ fontSize: 11, color: 'rgba(32,30,29,.62)' }}>{entry.time}</span>
-    </button>
-  )
-}
-
-function NavScopeItem({ id, label, icon, count, isActive, onClick }: { id: string; label: string; icon: string; count?: string; isActive: boolean; onClick: () => void }) {
-  const [hover, setHover] = useState(false)
-  return (
-    <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 2, textAlign: 'left', background: isActive ? '#e9f8ff' : hover ? 'rgba(32,30,29,.06)' : 'transparent', cursor: 'pointer', width: '100%' }}>
-      <i className={`ph-duotone ${icon}`} style={{ fontSize: 16, opacity: 0.85 }}></i>
-      <span style={{ flex: 1, fontSize: 13.5, fontWeight: isActive ? 600 : 400 }}>{label}</span>
-      {count && <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, color: 'rgba(32,30,29,.6)' }}>{count}</span>}
-    </button>
+    </div>
   )
 }
 
@@ -170,7 +157,7 @@ function HoverIconBtn({ icon, title, onClick, hoverBg, hoverColor }: { icon: str
 export default function Sidebar(props: SidebarProps) {
   const { rail, teams, teamOpen, activeTeam, activeChannel, activeDM, joinedVoice, voiceTeam, mic, dmOrder, dms, callLog, members, isAdmin } = props
 
-  const titles: Record<RailId, string> = { teams: 'Teams', chat: 'Chat', calls: 'Calls', members: 'Members' }
+  const titles: Record<RailId, string> = { teams: 'Teams', chat: 'Direct Messages', calls: 'Calls', members: 'Members' }
   const [micHover, setMicHover] = useState(false)
   const [leaveHover, setLeaveHover] = useState(false)
 
@@ -183,8 +170,9 @@ export default function Sidebar(props: SidebarProps) {
     <aside style={{ display: 'flex', flexDirection: 'column', minHeight: 0, background: '#f3f2f2', borderRight: '1px solid rgba(32,30,29,.1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 14px 8px' }}>
         <h4 style={{ margin: 0, fontSize: 17, fontWeight: 600, letterSpacing: '-.01em', flex: 1 }}>{titles[rail]}</h4>
-        {rail !== 'members' && <HoverIconBtn icon="ph-plus" title="New channel" onClick={props.onOpenCreate} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />}
-        {rail !== 'members' && <HoverIconBtn icon="ph-funnel" title="Filter" onClick={props.onOpenPalette} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />}
+        {rail === 'teams' && <HoverIconBtn icon="ph-plus" title="New channel" onClick={props.onOpenCreate} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />}
+        {rail === 'chat' && <HoverIconBtn icon="ph-plus" title="New DM" onClick={props.onOpenNewDM} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />}
+        {(rail === 'teams' || rail === 'chat') && <HoverIconBtn icon="ph-funnel" title="Filter" onClick={props.onOpenPalette} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />}
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 8px 12px' }}>

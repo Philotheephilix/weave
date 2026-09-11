@@ -129,7 +129,7 @@ export default function OrgAdminPanel({ adminHandle, onEnrolled, onClose }: OrgA
                   key={i}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr auto auto',
+                    gridTemplateColumns: '1fr auto',
                     gap: '0 16px',
                     alignItems: 'center',
                     padding: '8px 10px',
@@ -143,18 +143,6 @@ export default function OrgAdminPanel({ adminHandle, onEnrolled, onClose }: OrgA
                   </span>
                   <span style={{ color: 'rgba(32,30,29,.55)', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 12 }}>
                     {truncateAddress(m.address)}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                      borderRadius: 99,
-                      background: 'rgba(0,136,176,.1)',
-                      color: '#0088b0',
-                    }}
-                  >
-                    active
                   </span>
                 </div>
               ))}

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface HeaderProps {
   onOpenPalette: () => void
@@ -7,15 +7,46 @@ interface HeaderProps {
   identity?: { handle: string }
 }
 
+type TorState = 'connecting' | 'connected' | 'error'
+
+function torLabel(state: TorState): string {
+  if (state === 'connected') return 'onion · connected'
+  if (state === 'error') return 'onion · error'
+  return 'onion · connecting'
+}
+
+function torColors(state: TorState): { color: string; background: string } {
+  if (state === 'connected') return { color: '#006786', background: '#e9f8ff' }
+  if (state === 'error') return { color: '#7a2020', background: '#fff0f0' }
+  return { color: '#6b5c00', background: '#fffbe6' }
+}
+
 export default function Header({ onOpenPalette, onOpenMembers, identity }: HeaderProps) {
   const [searchHover, setSearchHover] = useState(false)
   const [profileHover, setProfileHover] = useState(false)
+  const [torStatus, setTorStatus] = useState<TorState>('connecting')
+
+  useEffect(() => {
+    // Get initial Tor status
+    window.weave?.tor?.status?.().then((s: unknown) => {
+      if (typeof s === 'string') setTorStatus(s as TorState)
+    }).catch(() => {})
+
+    // Subscribe to Tor status change events
+    const handler = (_event: unknown, status: unknown) => {
+      if (typeof status === 'string') setTorStatus(status as TorState)
+    }
+    window.weave?.on?.('tor:status', handler as (...args: unknown[]) => void)
+    return () => { window.weave?.off?.('tor:status', handler as (...args: unknown[]) => void) }
+  }, [])
+
+  const torStyle = torColors(torStatus)
 
   return (
     <header style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '0 16px', height: 52, background: '#f3f2f2' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 180 }}>
         <span style={{ fontWeight: 600, fontSize: 19, letterSpacing: '-.02em' }}>weave</span>
-        <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10, letterSpacing: '.06em', color: '#006786', background: '#e9f8ff', padding: '2px 6px', borderRadius: 2 }}>onion · connected</span>
+        <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10, letterSpacing: '.06em', color: torStyle.color, background: torStyle.background, padding: '2px 6px', borderRadius: 2 }}>{torLabel(torStatus)}</span>
       </div>
       <button
         onClick={onOpenPalette}

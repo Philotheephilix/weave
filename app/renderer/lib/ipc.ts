@@ -3,6 +3,24 @@
  * No mocks — every call goes through contextBridge to ipcMain.
  */
 
+export interface StoredChannel {
+  id: string
+  name: string
+  kind: string
+  desc?: string
+  unread: number
+}
+
+export interface StoredTeam {
+  id: string
+  name: string
+  initials: string
+  tint: string
+  ink: string
+  members: number
+  channels: StoredChannel[]
+}
+
 export interface WeaveIdentityInfo {
   viewPub: string   // hex
   spendPub: string  // hex
@@ -84,6 +102,20 @@ declare global {
         sendDM(args: {
           org: string; peerLabel: string; text: string
         }): Promise<{ ok: boolean; via: 'tor' | 'nostr' | 'arkiv-only' }>
+      }
+      call: {
+        signal(args: { to: string; signal: object }): Promise<void>
+        onSignal(cb: (payload: { from: string; signal: object }) => void): () => void
+      }
+      teams: {
+        load(orgName: string): Promise<StoredTeam[]>
+        save(args: { orgName: string; teams: StoredTeam[] }): Promise<void>
+        createTeam(args: { orgName: string; team: StoredTeam }): Promise<void>
+        createChannel(args: { orgName: string; teamId: string; channel: StoredChannel }): Promise<void>
+      }
+      dm: {
+        list(orgName: string): Promise<string[]>
+        open(args: { orgName: string; peerLabel: string }): Promise<void>
       }
       on(channel: string, cb: (...args: unknown[]) => void): void
       off(channel: string, cb: (...args: unknown[]) => void): void

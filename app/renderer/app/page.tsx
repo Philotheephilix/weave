@@ -17,6 +17,7 @@ import RingingModal from '@/components/calls/RingingModal'
 import CreateChannelModal from '@/components/modals/CreateChannelModal'
 import InviteModal from '@/components/modals/InviteModal'
 import MembersModal from '@/components/modals/MembersModal'
+import NewDMModal from '@/components/modals/NewDMModal'
 import SearchPalette from '@/components/modals/SearchPalette'
 import OrgAdminPanel from '@/components/admin/OrgAdminPanel'
 
@@ -83,9 +84,9 @@ export default function WeaveApp() {
   const [teams, setTeams] = useState<Team[]>([])
   const [identity, setIdentity] = useState<{ handle: string } | null>(null)
   const [identityChecked, setIdentityChecked] = useState(false)
-  const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [orgMembers, setOrgMembers] = useState<Array<{ name: string; address: string }>>([])
   const [showEnrollModal, setShowEnrollModal] = useState(false)
+  const [showNewDMModal, setShowNewDMModal] = useState(false)
   const [callLog, setCallLog] = useState<Array<{ id: string; name: string; dir: string; meta: string; time: string }>>([])
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -125,6 +126,18 @@ export default function WeaveApp() {
     }).catch(() => {})
   }, [identity])
 
+  // Load persisted teams and DM order when org is known
+  useEffect(() => {
+    if (!orgName) return
+    window.weave?.teams?.load?.(orgName).then((loaded: Team[]) => {
+      if (loaded && loaded.length > 0) setTeams(loaded)
+    }).catch(() => {})
+    window.weave?.dm?.list?.(orgName).then((order: string[]) => {
+      if (order && order.length > 0) setS(prev => ({ ...prev, dmOrder: order }))
+    }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgName])
+
   // Load org members when switching to members rail
   useEffect(() => {
     if (s.rail !== 'members') return
@@ -157,15 +170,18 @@ export default function WeaveApp() {
   useEffect(() => {
     if (!identity) return
     const handler = (_event: unknown, { from, content }: { from: string; content: string }) => {
+      const peer = from || 'unknown'
       setS(prev => {
-        const peer = from || 'unknown'
         const existing = prev.dms[peer] || []
-        return { ...prev, dms: { ...prev.dms, [peer]: [...existing, { mine: false, time: 'now', text: content }] } }
+        const newDmOrder = prev.dmOrder.includes(peer) ? prev.dmOrder : [peer, ...prev.dmOrder]
+        return { ...prev, dms: { ...prev.dms, [peer]: [...existing, { mine: false, time: 'now', text: content }] }, dmOrder: newDmOrder }
       })
+      // Persist DM peer to disk
+      if (orgName) window.weave?.dm?.open?.({ orgName, peerLabel: peer }).catch(() => {})
     }
     window.weave?.on?.('weave:dm:received', handler as (...args: unknown[]) => void)
     return () => { window.weave?.off?.('weave:dm:received', handler as (...args: unknown[]) => void) }
-  }, [identity])
+  }, [identity, orgName])
 
   // Start Arkiv poller when identity and channels are known
   useEffect(() => {
@@ -215,12 +231,17 @@ export default function WeaveApp() {
     const text = s.draft.trim()
     if (!text) return
     if (s.rail === 'chat') {
+      const peer = s.dm
       // Optimistically add to local state immediately
-      const list = [...(s.dms[s.dm] || []), { mine: true, time: 'now', text }]
-      setS(prev => ({ ...prev, dms: { ...prev.dms, [prev.dm]: list }, draft: '' }))
-      // Deliver via Tor/Nostr/Arkiv in background
-      if (orgName && s.dm) {
-        window.weave?.chat?.sendDM?.({ org: orgName, peerLabel: s.dm, text }).catch(() => {})
+      const list = [...(s.dms[peer] || []), { mine: true, time: 'now', text }]
+      setS(prev => {
+        const newDmOrder = prev.dmOrder.includes(peer) ? prev.dmOrder : [peer, ...prev.dmOrder]
+        return { ...prev, dms: { ...prev.dms, [peer]: list }, dmOrder: newDmOrder, draft: '' }
+      })
+      // Deliver via Tor/Nostr/Arkiv in background + persist peer
+      if (orgName && peer) {
+        window.weave?.chat?.sendDM?.({ org: orgName, peerLabel: peer, text }).catch(() => {})
+        window.weave?.dm?.open?.({ orgName, peerLabel: peer }).catch(() => {})
       }
     } else {
       const k = chanKey(s.team, s.channel)
@@ -260,11 +281,12 @@ export default function WeaveApp() {
   const createChannel = () => {
     const name = s.newName.trim()
     if (!name) return
-    setTeams(prev => prev.map(t => t.id === s.team
-      ? { ...t, channels: [...t.channels, { id: name, name, kind: s.newKind, unread: 0, desc: s.newDesc.trim() || `New ${s.newKind} channel.` }] }
-      : t
-    ))
+    const newChan = { id: name, name, kind: s.newKind, unread: 0, desc: s.newDesc.trim() || `New ${s.newKind} channel.` }
+    setTeams(prev => prev.map(t => t.id === s.team ? { ...t, channels: [...t.channels, newChan] } : t))
     setS(prev => ({ ...prev, channel: name, rail: 'teams', tab: 'posts', modal: 'invite', newName: '', newDesc: '' }))
+    if (orgName && s.team) {
+      window.weave?.teams?.createChannel?.({ orgName, teamId: s.team, channel: newChan }).catch(() => {})
+    }
     say('#' + name + ' created · add members to start gossiping history')
   }
 
@@ -279,7 +301,14 @@ export default function WeaveApp() {
   const sendInvites = () => {
     if (!s.invited.length) return
     const n = s.invited.length
+    const role = s.inviteRole === 'Admin' ? 'admin' : 'member'
+    const channel = s.channel
+    const org = orgName
+    const handles = [...s.invited]
     setS(prev => ({ ...prev, invited: [], modal: null }))
+    Promise.allSettled(
+      handles.map(h => window.weave?.arkiv?.addChannelMember?.({ org, channel, member: h, role }))
+    ).catch(() => {})
     say(`${n} ${n > 1 ? 'invites' : 'invite'} sent · ${s.inviteRole === 'Guest' ? 'guest token expires in ' + s.expiry : s.inviteRole.toLowerCase() + ' role on ensv2'}`)
   }
 
@@ -294,7 +323,6 @@ export default function WeaveApp() {
   const ring = (id: string, kind: string) => {
     activePeerLabelRef.current = id
     setS(prev => ({ ...prev, call: { state: 'ringing', with: id, title: id + ' · ' + kind, base: 0, people: ['me', id] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: kind === 'video' }))
-    // Start WebRTC and signal the peer
     rtc.startCall(id).catch(() => {})
   }
 
@@ -340,6 +368,11 @@ export default function WeaveApp() {
     const text = s.callDraft.trim()
     if (!text) return
     setS(prev => ({ ...prev, callChat: [...prev.callChat, { name: 'You', time: 'now', text }], callDraft: '' }))
+    if (activePeerLabelRef.current !== null) {
+      window.weave?.chat?.sendDM?.({ org: orgName, peerLabel: activePeerLabelRef.current, text }).catch(() => {})
+    } else {
+      window.weave?.arkiv?.postMessage?.({ org: orgName, channel: s.call?.title ?? 'meet', keyVersion: 0, text }).catch(() => {})
+    }
   }
 
   // Palette search pool
@@ -398,7 +431,7 @@ export default function WeaveApp() {
         <OrgAdminPanel
           adminHandle={identity.handle}
           onEnrolled={refreshMembers}
-          onClose={() => { setShowEnrollModal(false); setShowAdminPanel(false); refreshMembers() }}
+          onClose={() => { setShowEnrollModal(false); refreshMembers() }}
         />
       )}
 
@@ -430,6 +463,7 @@ export default function WeaveApp() {
           onToggleMic={() => setS(prev => ({ ...prev, mic: !prev.mic }))}
           onLeaveVoice={leaveVoice}
           onOpenCreate={() => setS(prev => ({ ...prev, modal: 'create', newName: '', newDesc: '', newKind: 'standard' }))}
+          onOpenNewDM={() => setShowNewDMModal(true)}
           onOpenPalette={() => setS(prev => ({ ...prev, palette: true, pq: '' }))}
           onEnrollMember={() => setShowEnrollModal(true)}
         />
@@ -539,7 +573,7 @@ export default function WeaveApp() {
               initials={ringPerson.initials}
               tint={ringPerson.tint}
               ink={ringPerson.ink}
-              meta="ringing · stealth key minted · dht lookup 1.4s"
+              meta="connecting…"
               onConnect={() => setS(prev => ({ ...prev, call: prev.call ? { ...prev.call, state: 'live' } : null, tick: 0 }))}
               onCancel={endCall}
             />
@@ -592,6 +626,21 @@ export default function WeaveApp() {
           results={buildPaletteResults(s.pq)}
           onPqChange={v => setS(prev => ({ ...prev, pq: v }))}
           onClose={() => setS(prev => ({ ...prev, palette: false }))}
+        />
+      )}
+
+      {showNewDMModal && identity && (
+        <NewDMModal
+          members={orgMembers}
+          myHandle={identity.handle}
+          onStart={peerLabel => {
+            setS(prev => {
+              const newDmOrder = prev.dmOrder.includes(peerLabel) ? prev.dmOrder : [peerLabel, ...prev.dmOrder]
+              return { ...prev, rail: 'chat', dm: peerLabel, dmOrder: newDmOrder }
+            })
+            if (orgName) window.weave?.dm?.open?.({ orgName, peerLabel }).catch(() => {})
+          }}
+          onClose={() => setShowNewDMModal(false)}
         />
       )}
 

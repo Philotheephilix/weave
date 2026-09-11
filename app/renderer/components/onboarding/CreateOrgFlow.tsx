@@ -157,12 +157,14 @@ export default function CreateOrgFlow({ onComplete, onBack }: Props) {
       fontFamily: '"Source Serif 4", Georgia, serif',
     }}>
       <div style={{ width: '100%', maxWidth: 520 }}>
+        {step !== 'creating' && step !== 'success' && (
         <button
           onClick={step === 'name' ? onBack : () => { if (step === 'seed') setStep('name'); else if (step === 'fund') setStep('seed'); else if (step === 'confirm') setStep('fund') }}
           style={{ background: 'none', border: 'none', color: 'rgba(32,30,29,.62)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, marginBottom: 24, padding: 0, fontFamily: 'inherit' }}
         >
           <i className="ph-duotone ph-arrow-left" style={{ fontSize: 14 }} /> Back
         </button>
+        )}
 
         <div style={{ fontSize: 22, fontWeight: 700, color: '#201e1d', marginBottom: 6 }}>Create Organization</div>
         <div style={{ fontSize: 14, color: 'rgba(32,30,29,.68)', marginBottom: 28 }}>

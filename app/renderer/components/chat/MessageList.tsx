@@ -23,13 +23,13 @@ export default function MessageList({ messages, rowGap, rowPad, emptyTitle, some
     if (scrollToBottom && ref.current) {
       ref.current.scrollTop = ref.current.scrollHeight
     }
-  })
+  }, [messages, someoneTyping, scrollToBottom])
 
   return (
     <div ref={ref} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 20px 8px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: rowGap }}>
         {messages.map(m => (
-          <MessageItem key={m.id} message={m} rowGap={rowGap} rowPad={rowPad} onToggleReaction={onToggleReaction} onOpenThread={onOpenThread} />
+          <MessageItem key={m.id} message={m} rowPad={rowPad} onToggleReaction={onToggleReaction} onOpenThread={onOpenThread} />
         ))}
         {messages.length === 0 && (
           <div style={{ padding: '26px 8px', maxWidth: '60ch' }}>

@@ -1,4 +1,4 @@
-import type { Person, Team, FileRow, CallLogEntry, ActivityItem, Meeting } from './types'
+import type { Person, Team, CallLogEntry, ActivityItem } from './types'
 
 export const people: Record<string, Person> = {
   me:    { name: 'Ravi Menon',    handle: 'ravi.weave.eth',    initials: 'RM', tint: '#cbeeff', ink: '#004961', role: 'Owner',    presence: '#0088b0' },
@@ -42,7 +42,7 @@ export const teams: Team[] = [
   },
 ]
 
-export const fileRows: FileRow[] = [
+export const fileRows = [
   { name: 'weave-spec-v2.pdf',         by: 'Alice Chen',   cid: 'bafybeig...a1',  size: '1.2 MB', icon: 'ph-duotone ph-file-pdf',      kind: 'PDF'  },
   { name: 'contracts-audit.xlsx',      by: 'Bob Nakamura', cid: 'bafybeig...b2',  size: '340 KB', icon: 'ph-duotone ph-file-xls',      kind: 'XLSX' },
   { name: 'noise-protocol-diagram.png',by: 'Carol Zhang',  cid: 'bafybeig...c3',  size: '820 KB', icon: 'ph-duotone ph-image',         kind: 'PNG'  },
@@ -57,7 +57,7 @@ export const callLog: CallLogEntry[] = [
   { id: '4', name: 'Dave Kim',     dir: 'out',    meta: 'Video · 31m',  time: '3 days ago' },
 ]
 
-export const meetings: Meeting[] = [
+export const meetings = [
   { time: '10:00 AM', title: 'Engineering Standup', who: 'alice.weave.eth',  live: true  },
   { time: '2:30 PM',  title: 'Design Review',       who: 'carol.weave.eth', live: false },
 ]

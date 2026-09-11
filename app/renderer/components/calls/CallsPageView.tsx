@@ -1,10 +1,10 @@
 'use client'
 import { useState } from 'react'
 import type { CallLogEntry } from '@/lib/types'
-import { ensLabel, ensInitials, ensTint } from '@/lib/ens-display'
+import { ensInitials, ensTint } from '@/lib/ens-display'
 
 function getPerson(id: string) {
-  return { name: ensLabel(id), initials: ensInitials(id), tint: ensTint(id), ink: '#444141', role: 'Member', handle: id }
+  return { initials: ensInitials(id), tint: ensTint(id), ink: '#444141' }
 }
 
 interface CallsPageViewProps {

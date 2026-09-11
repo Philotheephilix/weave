@@ -59,7 +59,6 @@ function mkTile(id: string, mic: boolean, cam: boolean, hand: boolean, callMode:
   const p = getPerson(id)
   const isMe = id === 'me'
   const muted = isMe ? !mic : false
-  const speaking = false
   return {
     id,
     initials: p.initials,
@@ -69,13 +68,11 @@ function mkTile(id: string, mic: boolean, cam: boolean, hand: boolean, callMode:
     ink: p.ink,
     role: p.role,
     bg: isMe ? '#f8f4f4' : 'repeating-linear-gradient(135deg,#dedbdb 0 3px,#e8e6e6 3px 6px)',
-    border: speaking ? '#0088b0' : 'rgba(32,30,29,.14)',
+    border: 'rgba(32,30,29,.14)',
     mic: muted ? 'ph-microphone-slash' : 'ph-microphone',
     micColor: muted ? '#aa0b56' : '#006786',
     camIcon: (isMe ? cam : true) ? 'ph-video-camera' : 'ph-video-camera-slash',
-    net: isMe ? 'tor · 1 hop' : 'tor · 3 hops',
     handShow: isMe && hand ? 'inline-flex' : 'none',
-    speakShow: speaking ? 'block' : 'none',
   }
 }
 
@@ -89,7 +86,6 @@ export default function CallView(props: CallViewProps) {
   const { call, callMode, callPanel, mic, cam, hand, captions, rec, tick, callChat, callDraft } = props
   const secs = call.base + tick
   const timer = formatTime(secs)
-  const mm = timer.split(':')[0], ss2 = timer.split(':')[1]
   const callPeople = call.people
   const tiles = callPeople.map(id => mkTile(id, mic, cam, hand, callMode))
   const [panelHover, setPanelHover] = useState(false)
@@ -106,7 +102,7 @@ export default function CallView(props: CallViewProps) {
   ]
 
   const panelOpen = callPanel !== 'none'
-  const callTabs: CallPanelId[] = ['people', 'chat']
+  const callTabs: CallPanelId[] = ['people', 'chat'] as const
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', background: '#eae9e9', animation: 'wv-rise .18s ease-out' }}>
@@ -158,14 +154,10 @@ export default function CallView(props: CallViewProps) {
                   <span style={{ display: 'grid', placeItems: 'center', width: 52, height: 52, background: t.tint, color: t.ink, fontSize: 17, fontWeight: 600, borderRadius: 2 }}>{t.initials}</span>
                   <span style={{ position: 'absolute', left: 8, bottom: 7, maxWidth: 'calc(100% - 40px)', display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(243,242,242,.92)', padding: '2px 8px', borderRadius: 2 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</span>
-                    <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9, color: 'rgba(32,30,29,.7)', whiteSpace: 'nowrap' }}>{t.net}</span>
                   </span>
                   <i className={`ph-duotone ${t.mic}`} style={{ position: 'absolute', right: 8, bottom: 7, fontSize: 15, color: t.micColor }}></i>
                   {t.handShow !== 'none' && (
                     <span style={{ display: 'inline-flex', position: 'absolute', right: 8, top: 8, alignItems: 'center', gap: 4, fontSize: 10.5, padding: '2px 7px', background: '#fff1f4', color: '#aa0b56', borderRadius: 2 }}>hand up</span>
-                  )}
-                  {t.speakShow !== 'none' && (
-                    <span style={{ position: 'absolute', inset: 0, border: '2px solid #0088b0', pointerEvents: 'none' }}></span>
                   )}
                 </div>
               ))}
@@ -194,7 +186,7 @@ export default function CallView(props: CallViewProps) {
       {panelOpen && (
         <div style={{ width: 312, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#f3f2f2', borderLeft: '1px solid rgba(32,30,29,.12)' }}>
           <div style={{ display: 'flex', gap: 2, padding: '12px 12px 0' }}>
-            {(['people', 'chat'] as CallPanelId[]).map(tab => (
+            {callTabs.map(tab => (
               <PanelTabBtn key={tab} label={tab.charAt(0).toUpperCase() + tab.slice(1)} isActive={callPanel === tab} onClick={() => props.onSetCallPanel(tab)} />
             ))}
           </div>

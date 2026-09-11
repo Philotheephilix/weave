@@ -56,6 +56,16 @@ contextBridge.exposeInMainWorld('weave', {
   chat: {
     sendDM: (args: object) => ipcRenderer.invoke('weave:chat:sendDM', args),
   },
+  teams: {
+    load:          (orgName: string) => ipcRenderer.invoke('weave:teams:load', orgName),
+    save:          (args: object) => ipcRenderer.invoke('weave:teams:save', args),
+    createTeam:    (args: object) => ipcRenderer.invoke('weave:teams:createTeam', args),
+    createChannel: (args: object) => ipcRenderer.invoke('weave:teams:createChannel', args),
+  },
+  dm: {
+    list: (orgName: string) => ipcRenderer.invoke('weave:dm:list', orgName),
+    open: (args: object) => ipcRenderer.invoke('weave:dm:open', args),
+  },
   on:  (channel: string, cb: (...args: unknown[]) => void) => ipcRenderer.on(channel, cb),
   off: (channel: string, cb: (...args: unknown[]) => void) => ipcRenderer.removeListener(channel, cb),
 })

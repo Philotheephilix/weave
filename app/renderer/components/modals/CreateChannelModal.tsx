@@ -24,6 +24,7 @@ export default function CreateChannelModal({ teamName, newName, newDesc, newKind
   const [closeHover, setCloseHover] = useState(false)
   const [cancelHover, setCancelHover] = useState(false)
   const [createHover, setCreateHover] = useState(false)
+  const [hoveredKind, setHoveredKind] = useState<ChannelKind | null>(null)
   const canCreate = newName.trim().length > 0
 
   return (
@@ -67,11 +68,11 @@ export default function CreateChannelModal({ teamName, newName, newDesc, newKind
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {KIND_OPTIONS.map(k => {
               const isActive = newKind === k.id
-              const [kHover, setKHover] = useState(false)
+              const kHover = hoveredKind === k.id
               return (
                 <button key={k.id} onClick={() => onKindChange(k.id)}
-                  onMouseEnter={() => setKHover(true)}
-                  onMouseLeave={() => setKHover(false)}
+                  onMouseEnter={() => setHoveredKind(k.id)}
+                  onMouseLeave={() => setHoveredKind(null)}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 12px', background: isActive ? '#e9f8ff' : '#f8f4f4', color: isActive ? '#004961' : '#201e1d', border: `1px solid ${isActive ? '#0088b0' : 'rgba(32,30,29,.16)'}`, borderRadius: 2, fontSize: 13, fontWeight: isActive ? 600 : 400, cursor: 'pointer' }}>
                   <i className={`ph-duotone ${k.icon}`} style={{ fontSize: 15 }}></i>{k.label}
                 </button>

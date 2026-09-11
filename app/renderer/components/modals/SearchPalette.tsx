@@ -18,6 +18,7 @@ interface SearchPaletteProps {
 }
 
 export default function SearchPalette({ pq, results, onPqChange, onClose }: SearchPaletteProps) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'start center', padding: '90px 20px 20px', background: 'rgba(45,43,43,.45)', zIndex: 50 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(620px,100%)', background: '#f3f2f2', borderRadius: 4, boxShadow: '0 12px 32px rgba(45,43,43,.24)', overflow: 'hidden', animation: 'wv-rise .14s ease-out' }}>
@@ -39,12 +40,11 @@ export default function SearchPalette({ pq, results, onPqChange, onClose }: Sear
               Nothing matches &ldquo;{pq}&rdquo;. Handles resolve on ENSv2 — try a full <span style={{ fontFamily: 'ui-monospace,Menlo,monospace' }}>name.weave.eth</span>.
             </p>
           ) : results.map((r, i) => {
-            const [hover, setHover] = useState(false)
             return (
               <button key={i} onClick={() => { r.go(); onClose() }}
-                onMouseEnter={() => setHover(true)}
-                onMouseLeave={() => setHover(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '9px 10px', borderRadius: 2, textAlign: 'left', background: hover ? '#e9f8ff' : r.bg, cursor: 'pointer' }}>
+                onMouseEnter={() => setHoverIdx(i)}
+                onMouseLeave={() => setHoverIdx(null)}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '9px 10px', borderRadius: 2, textAlign: 'left', background: hoverIdx === i ? '#e9f8ff' : r.bg, cursor: 'pointer' }}>
                 <i className={`ph-duotone ${r.icon}`} style={{ fontSize: 18, color: '#006786' }}></i>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>{r.label}</span>

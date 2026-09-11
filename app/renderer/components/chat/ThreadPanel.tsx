@@ -1,9 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Message } from '@/lib/types'
+import { ensInitials, ensTint } from '@/lib/ens-display'
 
 const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
-function getPerson(id: string) { return FALLBACK_PERSON }
 
 interface ThreadPanelProps {
   message: Message
@@ -13,9 +13,40 @@ interface ThreadPanelProps {
   onClose: () => void
 }
 
+function useResolvedPersons(ids: string[]) {
+  const [persons, setPersons] = useState<Record<string, typeof FALLBACK_PERSON>>({})
+  useEffect(() => {
+    let cancelled = false
+    const unique = Array.from(new Set(ids.filter(id => id && id !== 'me')))
+    Promise.all(unique.map(id =>
+      window.weave.resolve(id)
+        .then((handle: string) => ({ id, handle }))
+        .catch(() => ({ id, handle: '' }))
+    )).then(results => {
+      if (cancelled) return
+      const map: Record<string, typeof FALLBACK_PERSON> = {}
+      for (const { id, handle } of results) {
+        if (handle) {
+          map[id] = { name: handle, initials: ensInitials(handle), tint: ensTint(handle), ink: '#004961', role: 'Member', handle }
+        } else {
+          map[id] = FALLBACK_PERSON
+        }
+      }
+      setPersons(map)
+    })
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids.join(',')])
+  return persons
+}
+
 export default function ThreadPanel({ message: m, draft, onDraftChange, onSendReply, onClose }: ThreadPanelProps) {
   const [closeHover, setCloseHover] = useState(false)
   const [replyHover, setReplyHover] = useState(false)
+
+  const allIds = [m.who, ...m.replies.map(r => r.who)]
+  const persons = useResolvedPersons(allIds)
+  const getPerson = (id: string) => (id === 'me' ? FALLBACK_PERSON : persons[id] ?? FALLBACK_PERSON)
   const p = getPerson(m.who)
 
   return (

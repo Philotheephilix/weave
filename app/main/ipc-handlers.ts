@@ -122,6 +122,42 @@ function generateSeedPhrase(): string[] {
 const IDENTITY_PATH = () => path.join(app.getPath('userData'), 'weave-identity.json')
 const SEED_PATH = () => path.join(app.getPath('userData'), 'weave-seed.bin')
 const MEMBERS_PATH = (orgName: string) => path.join(app.getPath('userData'), `weave-members-${orgName}.json`)
+const TEAMS_PATH = (orgName: string) => path.join(app.getPath('userData'), `weave-teams-${orgName}.json`)
+const DM_ORDER_PATH = (orgName: string) => path.join(app.getPath('userData'), `weave-dmorder-${orgName}.json`)
+
+interface StoredTeam {
+  id: string
+  name: string
+  initials: string
+  tint: string
+  ink: string
+  members: number
+  channels: Array<{ id: string; name: string; kind: string; unread: number; desc: string }>
+}
+
+function loadTeams(orgName: string): StoredTeam[] {
+  try {
+    const p = TEAMS_PATH(orgName)
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'))
+  } catch {}
+  return []
+}
+
+function saveTeams(orgName: string, teams: StoredTeam[]) {
+  try { fs.writeFileSync(TEAMS_PATH(orgName), JSON.stringify(teams, null, 2)) } catch {}
+}
+
+function loadDMOrder(orgName: string): string[] {
+  try {
+    const p = DM_ORDER_PATH(orgName)
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'))
+  } catch {}
+  return []
+}
+
+function saveDMOrder(orgName: string, order: string[]) {
+  try { fs.writeFileSync(DM_ORDER_PATH(orgName), JSON.stringify(order)) } catch {}
+}
 
 // WeaveRegistrar deployment block on Sepolia — safe start point for log scanning.
 // Contract deployed recently; 8_600_000 is a conservative lower bound that avoids
@@ -696,7 +732,64 @@ export function registerIpcHandlers(
     return { ok: true, via }
   })
 
-  // ── Chat: subscribe Nostr for incoming DMs, push to renderer ───────────────
+    // ── Teams + Channels persistence (local JSON — Arkiv when SDK ships) ────────
+
+  ipcMain.handle('weave:teams:load', (_e, orgName: string) => {
+    return loadTeams(orgName)
+  })
+
+  ipcMain.handle('weave:teams:save', (_e, { orgName, teams }: { orgName: string; teams: StoredTeam[] }) => {
+    saveTeams(orgName, teams)
+    return { ok: true }
+  })
+
+  ipcMain.handle('weave:teams:createChannel', (_e, {
+    orgName, teamId, channel,
+  }: {
+    orgName: string
+    teamId: string
+    channel: { id: string; name: string; kind: string; unread: number; desc: string }
+  }) => {
+    const teams = loadTeams(orgName)
+    const idx = teams.findIndex(t => t.id === teamId)
+    if (idx < 0) return { ok: false, error: 'team not found' }
+    if (!teams[idx].channels.find(c => c.id === channel.id)) {
+      teams[idx].channels.push(channel)
+      saveTeams(orgName, teams)
+    }
+    return { ok: true }
+  })
+
+  ipcMain.handle('weave:teams:createTeam', (_e, {
+    orgName, team,
+  }: {
+    orgName: string
+    team: StoredTeam
+  }) => {
+    const teams = loadTeams(orgName)
+    if (!teams.find(t => t.id === team.id)) {
+      teams.push(team)
+      saveTeams(orgName, teams)
+    }
+    return { ok: true }
+  })
+
+  // ── DM order persistence ──────────────────────────────────────────────────
+
+  ipcMain.handle('weave:dm:list', (_e, orgName: string) => {
+    return loadDMOrder(orgName)
+  })
+
+  ipcMain.handle('weave:dm:open', (_e, { orgName, peerLabel }: { orgName: string; peerLabel: string }) => {
+    const order = loadDMOrder(orgName)
+    if (!order.includes(peerLabel)) {
+      order.unshift(peerLabel)
+      saveDMOrder(orgName, order)
+    }
+    return { ok: true, order }
+  })
+
+// ── Chat: subscribe Nostr for incoming DMs, push to renderer ───────────────
 
   const _nostrUnsub = nostr.subscribe(identity.spendPriv, (from, content) => {
     const win = BrowserWindow.getAllWindows()[0]
