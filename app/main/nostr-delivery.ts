@@ -43,10 +43,9 @@ export class NostrDelivery {
     onMessage: (from: string, content: string) => void,
   ): () => void {
     const recipientPub = getPublicKey(recipientPriv)
-    const filter: Filter = { kinds: [1059], '#p': [recipientPub] }
     const sub = this.pool.subscribeMany(
       this.relays,
-      filter,
+      { kinds: [1059], '#p': [recipientPub] } as Filter,
       {
         onevent(event: Event) {
           try {

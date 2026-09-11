@@ -5,7 +5,9 @@ contextBridge.exposeInMainWorld('weave', {
     get: () => ipcRenderer.invoke('weave:identity:get'),
   },
   resolve:       (label: string) => ipcRenderer.invoke('weave:resolve', label),
-  notifications: () => ipcRenderer.invoke('weave:notifications:poll'),
+  notifications: {
+    poll: () => ipcRenderer.invoke('weave:notifications:poll'),
+  },
   dht: {
     announce: (onion: string) => ipcRenderer.invoke('weave:dht:announce', onion),
     lookup:   (viewPub: string) => ipcRenderer.invoke('weave:dht:lookup', viewPub),

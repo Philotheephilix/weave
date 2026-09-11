@@ -71,16 +71,23 @@ export class TorManager {
         this.controlSocket = net.createConnection(9051, '127.0.0.1')
       }
       let buf = ''
-      const handler = (data: Buffer) => {
+      const onData = (data: Buffer) => {
         buf += data.toString()
-        if (/^[0-9]{3} /.test(buf.split('\n').filter(Boolean).pop() || '')) {
-          this.controlSocket!.off('data', handler)
+        // Tor control protocol: response is complete when last non-empty line starts with 3-digit code + space
+        const lines = buf.split('\r\n').filter(Boolean)
+        const last = lines[lines.length - 1] ?? ''
+        if (/^\d{3} /.test(last)) {
+          this.controlSocket!.removeListener('data', onData)
+          this.controlSocket!.removeListener('error', onError)
           resolve(buf)
         }
       }
-      // Use once so each call's handler is removed after it fires, preventing accumulation.
-      this.controlSocket.once('data', handler)
-      this.controlSocket.once('error', reject)
+      const onError = (err: Error) => {
+        this.controlSocket!.removeListener('data', onData)
+        reject(err)
+      }
+      this.controlSocket.on('data', onData)
+      this.controlSocket.once('error', onError)
       this.controlSocket.write(cmd + '\r\n')
     })
   }

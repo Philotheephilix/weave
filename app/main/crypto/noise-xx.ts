@@ -26,13 +26,13 @@ function mixHash(h: Uint8Array, data: Uint8Array): Uint8Array {
 
 function aead(k: Uint8Array, n: number, ad: Uint8Array, pt: Uint8Array): Uint8Array {
   const nonce = new Uint8Array(12)
-  new DataView(nonce.buffer).setUint32(8, n, false)
+  new DataView(nonce.buffer).setUint32(8, n, true) // little-endian per RFC 8439
   return chacha20poly1305(k, nonce, ad).encrypt(pt)
 }
 
 function aeadDecrypt(k: Uint8Array, n: number, ad: Uint8Array, ct: Uint8Array): Uint8Array {
   const nonce = new Uint8Array(12)
-  new DataView(nonce.buffer).setUint32(8, n, false)
+  new DataView(nonce.buffer).setUint32(8, n, true) // little-endian per RFC 8439
   return chacha20poly1305(k, nonce, ad).decrypt(ct)
 }
 
@@ -173,7 +173,7 @@ export class NoiseXXSession {
   encrypt(plaintext: Uint8Array): Uint8Array {
     if (!this.done) throw new Error('handshake not complete')
     const nonce = new Uint8Array(12)
-    new DataView(nonce.buffer).setUint32(8, this.sendN++, false)
+    new DataView(nonce.buffer).setUint32(8, this.sendN++, true) // little-endian per RFC 8439
     const ct = chacha20poly1305(this.sendKey, nonce).encrypt(plaintext)
     const frame = new Uint8Array(2 + ct.length)
     new DataView(frame.buffer).setUint16(0, ct.length, false)
@@ -188,7 +188,7 @@ export class NoiseXXSession {
     if (frame.length < 2 + len || len < 16) throw new Error(`invalid frame length ${len}`)
     const ct = frame.slice(2, 2 + len)
     const nonce = new Uint8Array(12)
-    new DataView(nonce.buffer).setUint32(8, this.recvN++, false)
+    new DataView(nonce.buffer).setUint32(8, this.recvN++, true) // little-endian per RFC 8439
     return chacha20poly1305(this.recvKey, nonce).decrypt(ct)
   }
 }

@@ -204,6 +204,7 @@ contract WeavePermissionedRegistry {
     }
 
     function _burn(address from, uint256 id) internal {
+        require(_balances[id][from] > 0, "no token");
         _balances[id][from] -= 1;
     }
 }
