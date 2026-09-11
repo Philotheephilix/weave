@@ -182,4 +182,3 @@ func scanAnnouncements(spendingKey []byte, announcements []ERC5564Announcement) 
 	}
 	return matches, nil
 }
-

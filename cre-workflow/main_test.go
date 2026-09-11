@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/hex"
 	"math/big"
+	"strings"
 	"testing"
 )
 
@@ -159,7 +160,7 @@ func TestScanAnnouncements_MalformedPubkeySkipped(t *testing.T) {
 	}
 }
 
-func TestStringsEqualFold(t *testing.T) {
+func TestEqualFold(t *testing.T) {
 	cases := []struct {
 		a, b string
 		want bool
@@ -170,9 +171,9 @@ func TestStringsEqualFold(t *testing.T) {
 		{"0xABCD", "0xABC", false},
 	}
 	for _, c := range cases {
-		got := stringsEqualFold(c.a, c.b)
+		got := strings.EqualFold(c.a, c.b)
 		if got != c.want {
-			t.Errorf("stringsEqualFold(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
+			t.Errorf("strings.EqualFold(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
 		}
 	}
 }
