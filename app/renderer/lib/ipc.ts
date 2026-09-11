@@ -80,6 +80,46 @@ declare global {
       stealth: {
         compute: (viewPubHex: string, spendPubHex: string) => Promise<StealthResult>
       }
+      chat: {
+        sendDM(args: {
+          org: string; peerLabel: string; text: string
+        }): Promise<{ ok: boolean; via: 'tor' | 'nostr' | 'arkiv-only' }>
+      }
+      on(channel: string, cb: (...args: unknown[]) => void): void
+      off(channel: string, cb: (...args: unknown[]) => void): void
+      arkiv: {
+        storeChannelKey(args: {
+          org: string; channel: string; recipient: string
+          keyVersion: number; K_channel: string; recipientNoisePub: string
+        }): Promise<{ ok: boolean; reason?: string }>
+        fetchChannelKey(args: {
+          org: string; channel: string; recipientLabel: string; keyVersion: number
+        }): Promise<string | null>
+        getLatestKeyVersion(args: {
+          org: string; channel: string; recipientLabel: string
+        }): Promise<number>
+        rotateChannelKey(args: {
+          org: string; channel: string; members: { label: string; noisePub: string }[]
+        }): Promise<number>
+        postMessage(args: {
+          org: string; channel: string; keyVersion: number; text: string; expiryDays?: number
+        }): Promise<string>
+        fetchMessages(args: {
+          org: string; channel: string; sinceTimestamp: number; keyVersion: number
+        }): Promise<{ id: string; sender: string; timestamp: number; text: string }[]>
+        postDM(args: {
+          org: string; recipientLabel: string; text: string; expiryDays?: number
+        }): Promise<string>
+        fetchDMs(args: {
+          org: string; peerLabel: string; sinceTimestamp: number
+        }): Promise<{ id: string; sender: string; timestamp: number; text: string; mine: boolean }[]>
+        addChannelMember(args: {
+          org: string; channel: string; member: string; role: 'admin' | 'member'
+        }): Promise<{ ok: boolean }>
+        listChannelMembers(args: {
+          org: string; channel: string
+        }): Promise<{ member: string; role: string }[]>
+      }
     }
   }
 }

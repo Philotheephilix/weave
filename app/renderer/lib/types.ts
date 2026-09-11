@@ -61,6 +61,8 @@ export interface Message {
   file?: { name: string; meta: string }
   reactions: Reaction[]
   replies: ThreadReply[]
+  arkivId?: string       // Arkiv entity key, if persisted
+  fromArkiv?: boolean    // true if this message was fetched from Arkiv (not live Tor)
 }
 
 export interface DMMessage {
@@ -77,21 +79,6 @@ export interface CallLogEntry {
   time: string
 }
 
-export interface FileRow {
-  name: string
-  by: string
-  cid: string
-  size: string
-  icon: string
-  kind: string
-}
-
-export interface Meeting {
-  time: string
-  title: string
-  who: string
-  live: boolean
-}
 
 export interface ActivityItem {
   title: string
@@ -122,7 +109,7 @@ export interface CallTile {
   speakShow: string
 }
 
-export type RailId = 'members' | 'chat' | 'teams' | 'calls' | 'files' | 'meet'
+export type RailId = 'members' | 'chat' | 'teams' | 'calls'
 export type ModalId = 'create' | 'invite' | 'members' | null
 export type CallPanelId = 'people' | 'chat' | 'none'
 export type CallMode = 'grid' | 'present'
@@ -130,13 +117,13 @@ export type TabId = 'posts' | 'files' | 'board'
 
 export interface AppState {
   rail: RailId
+  arkivLastFetch: Record<string, number>       // `${org}/${channel}` → last fetch timestamp ms
+  channelKeyVersions: Record<string, number>   // `${org}/${channel}` → current keyVersion
   teamOpen: Record<string, boolean>
   team: string
   channel: string
   dm: string
   tab: TabId
-  filesScope: string
-  activityScope: string
   msgs: Record<string, Message[]>
   dms: Record<string, DMMessage[]>
   dmOrder: string[]
@@ -168,7 +155,6 @@ export interface AppState {
   captions: boolean
   rec: boolean
   tick: number
-  dial: string
   joinCode: string
   toast: string | null
 }

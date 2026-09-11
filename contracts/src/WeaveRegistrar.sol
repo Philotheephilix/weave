@@ -4,11 +4,28 @@ pragma solidity ^0.8.25;
 import {WeavePermissionedRegistry} from "./WeavePermissionedRegistry.sol";
 import {WeaveWildcardResolver} from "./WeaveWildcardResolver.sol";
 
+/// @dev ENSv2 PermissionedRegistry interface (the ETH-level registry that owns weave.eth).
+///      setSubregistry wires subname→subregistry; setResolver sets the wildcard resolver.
+interface IENSv2Registry {
+    function setSubregistry(uint256 anyId, address subregistry) external;
+    function setResolver(uint256 anyId, address resolver) external;
+    function getSubregistry(string calldata label) external view returns (address);
+    function getResolver(string calldata label) external view returns (address);
+}
+
 /// @dev Public entry point for handle registration.
-///      Calls registry.register* then resolver.setIdentity atomically.
+///      Calls WeavePermissionedRegistry.register* + WeaveWildcardResolver.setIdentity atomically.
+///      Optionally mirrors org registrations into ENSv2 ETH Registry so the
+///      Universal Resolver can traverse into our subregistry for *.weave.eth.
 contract WeaveRegistrar {
     WeavePermissionedRegistry public immutable registry;
     WeaveWildcardResolver     public immutable resolver;
+    /// @dev ENSv2 ETH Registry on Sepolia (0xbdc85dd5...). Zero = ENSv2 mirroring disabled.
+    IENSv2Registry            public immutable ensv2Registry;
+
+    // labelhash("weave") — token ID used in ENSv2 ETH Registry
+    bytes32 public constant WEAVE_LABEL_HASH =
+        0xb99b35046f693c814b9cadb2a27210be9967bb05de4b54fd70c7d5c5f2912617;
 
     address public owner;
 
@@ -25,9 +42,12 @@ contract WeaveRegistrar {
     error OrgNotFound();
     error OrgAlreadyExists();
 
-    constructor(address _registry, address _resolver) {
+    /// @param _ensv2Registry ENSv2 ETHRegistry address (0xbdc85dd5... on Sepolia).
+    ///                       Pass address(0) to disable ENSv2 mirroring.
+    constructor(address _registry, address _resolver, address _ensv2Registry) {
         registry = WeavePermissionedRegistry(_registry);
         resolver = WeaveWildcardResolver(_resolver);
+        ensv2Registry = IENSv2Registry(_ensv2Registry);
         owner = msg.sender;
     }
 
@@ -44,6 +64,8 @@ contract WeaveRegistrar {
     // Register an org: creates orgname.weave.eth (member token) +
     // admin.orgname.weave.eth (operator token, transferable).
     // Caller becomes the org admin. No contract-owner permission required.
+    // Also registers orgname.weave.eth in the ENSv2 ETH Registry so the
+    // Universal Resolver can resolve *.orgname.weave.eth via ENSIP-10.
     function registerOrg(
         string calldata orgLabel,
         address adminAddr,

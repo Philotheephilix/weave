@@ -18,11 +18,7 @@ interface InviteModalProps {
 
 const ROLES = ['Owner', 'Moderator', 'Member', 'Guest']
 const EXPIRIES = ['24 hours', '7 days', '30 days']
-const SUGGESTIONS = [
-  { id: 'devika', handle: 'devika.weave.eth', initials: 'DS', tint: '#ffdee6', ink: '#aa0b56' },
-  { id: 'tarun',  handle: 'tarun.weave.eth',  initials: 'TD', tint: '#cbeeff', ink: '#004961' },
-  { id: 'nithya', handle: 'nithya.weave.eth', initials: 'NB', tint: '#eae7e7', ink: '#444141' },
-]
+const SUGGESTIONS: { id: string; handle: string; initials: string; tint: string; ink: string }[] = []
 
 function SuggestBtn({ s, onPick }: { s: typeof SUGGESTIONS[0]; onPick: () => void }) {
   const [hover, setHover] = useState(false)

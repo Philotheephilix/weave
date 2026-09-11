@@ -54,7 +54,7 @@ export default function ChannelView(props: ChannelViewProps) {
   const chTagBg = ch.kind === 'standard' ? '#eae7e7' : ch.kind === 'private' ? '#fff1f4' : '#e9f8ff'
   const chTagInk = ch.kind === 'standard' ? '#444141' : ch.kind === 'private' ? '#aa0b56' : '#004961'
 
-  const facepile = ['maya', 'arjun', 'priya', 'me'].map(id => getPerson(id))
+  const facepile: never[] = []
   const threadMessage = threadId ? messages.find(m => m.id === threadId) : null
 
   const tabs: { id: TabId; label: string }[] = [

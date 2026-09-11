@@ -1,10 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { DMMessage } from '@/lib/types'
-
-function getPerson(id: string) {
-  return { name: id, initials: (id || '?').slice(0, 2).toUpperCase(), tint: '#eae9e9', ink: '#444141', role: 'Member', handle: id, presence: '#9b9797' as const }
-}
+import { ensLabel, ensInitials, ensTint } from '@/lib/ens-display'
 import MessageComposer from './MessageComposer'
 
 interface DMViewProps {
@@ -19,7 +16,14 @@ interface DMViewProps {
 }
 
 export default function DMView({ dmId, messages, draft, onDraft, onSend, onStartAudioCall, onStartVideoCall, onOpenMembers }: DMViewProps) {
-  const p = getPerson(dmId)
+  const p = {
+    name: ensLabel(dmId),
+    initials: ensInitials(dmId),
+    tint: ensTint(dmId),
+    ink: '#444141',
+    handle: dmId,
+    presence: '#9b9797' as const,
+  }
   const [audioHover, setAudioHover] = useState(false)
   const [videoHover, setVideoHover] = useState(false)
   const [infoHover, setInfoHover] = useState(false)

@@ -1,9 +1,12 @@
 'use client'
 import { useState } from 'react'
 import type { CallState, CallPanelId, CallMode } from '@/lib/types'
+import { ensLabel, ensInitials, ensTint } from '@/lib/ens-display'
 
-const FALLBACK_PERSON = { name: 'Unknown', initials: '??', tint: '#eae9e9', ink: '#444141', role: 'Member', handle: '' }
-function getPerson(id: string) { return FALLBACK_PERSON }
+function getPerson(id: string) {
+  const label = ensLabel(id)
+  return { name: label, initials: ensInitials(id), tint: ensTint(id), ink: '#444141', role: 'Member', handle: id }
+}
 
 function CtlBtn({ label, icon, on, act }: { label: string; icon: string; on: boolean; act: () => void }) {
   const [hover, setHover] = useState(false)
@@ -55,8 +58,8 @@ interface CallViewProps {
 function mkTile(id: string, mic: boolean, cam: boolean, hand: boolean, callMode: CallMode) {
   const p = getPerson(id)
   const isMe = id === 'me'
-  const muted = isMe ? !mic : id === 'arjun'
-  const speaking = !isMe && id === 'maya' && callMode !== 'present'
+  const muted = isMe ? !mic : false
+  const speaking = false
   return {
     id,
     initials: p.initials,
@@ -133,7 +136,7 @@ export default function CallView(props: CallViewProps) {
           {callMode === 'present' && (
             <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ position: 'relative', flex: 1, minHeight: 180, background: 'repeating-linear-gradient(135deg,#dcd9d9 0 4px,#e6e4e4 4px 8px)', display: 'grid', placeItems: 'center', border: '1px solid rgba(32,30,29,.14)' }}>
-                <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11, color: 'rgba(32,30,29,.72)', textAlign: 'center' }}>shared screen — Maya Rao<br />&quot;Broadsheet · cover plates v2&quot;</span>
+                <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11, color: 'rgba(32,30,29,.72)', textAlign: 'center' }}>shared screen</span>
                 <span style={{ position: 'absolute', top: 10, left: 10, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, padding: '3px 7px', background: '#f3f2f2', color: '#006786', borderRadius: 2 }}>presenting · 1080p · vp8</span>
                 <button onClick={props.onToggleShare} style={{ position: 'absolute', top: 8, right: 8, fontSize: 12.5, fontWeight: 600, padding: '5px 10px', background: '#f3f2f2', border: '1px solid rgba(32,30,29,.16)', borderRadius: 2, cursor: 'pointer' }}>Stop sharing</button>
               </div>
@@ -171,7 +174,7 @@ export default function CallView(props: CallViewProps) {
           {captions && (
             <div style={{ padding: '9px 12px', background: '#f8f4f4', borderLeft: '2px solid #0088b0' }}>
               <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, color: '#006786' }}>whisper.cpp · on-device</span>
-              <p style={{ margin: '3px 0 0', fontSize: 14.5 }}>Maya: …so the plate offsets stay em-scaled, which means the fringes hold at any projection size.</p>
+              <p style={{ margin: '3px 0 0', fontSize: 14.5 }}></p>
             </div>
           )}
         </div>

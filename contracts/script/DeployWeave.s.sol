@@ -35,7 +35,7 @@ contract DeployWeave is Script {
 
         WeaveWildcardResolver resolver = new WeaveWildcardResolver();
         WeavePermissionedRegistry registry = new WeavePermissionedRegistry(address(resolver));
-        WeaveRegistrar registrar = new WeaveRegistrar(address(registry), address(resolver));
+        WeaveRegistrar registrar = new WeaveRegistrar(address(registry), address(resolver), ENS_ETH_REGISTRY);
         NotificationLog notifLog = new NotificationLog(KEYSTONE_FORWARDER);
 
         // Wire internal roles

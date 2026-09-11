@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { AppState, RailId, ModalId, TabId, ChannelKind, CallPanelId, CallMode, Message, Team, Channel } from '@/lib/types'
 import OnboardingScreen from '@/components/onboarding/OnboardingScreen'
+import { startArkivPoller } from '@/lib/arkiv-poller'
+import { useWebRTC } from '@/lib/useWebRTC'
 
 import Header from '@/components/layout/Header'
 import NavRail from '@/components/layout/NavRail'
@@ -11,9 +13,7 @@ import DMView from '@/components/chat/DMView'
 import CallView from '@/components/calls/CallView'
 import CallsPageView from '@/components/calls/CallsPageView'
 import RingingModal from '@/components/calls/RingingModal'
-import FilesView from '@/components/pages/FilesView'
-import ActivityView from '@/components/pages/ActivityView'
-import MeetView from '@/components/pages/MeetView'
+
 import CreateChannelModal from '@/components/modals/CreateChannelModal'
 import InviteModal from '@/components/modals/InviteModal'
 import MembersModal from '@/components/modals/MembersModal'
@@ -27,8 +27,6 @@ const initialState: AppState = {
   channel: '',
   dm: '',
   tab: 'posts',
-  filesScope: 'channel',
-  activityScope: 'all', // unused, kept for AppState compat
   msgs: {},
   dms: {},
   dmOrder: [],
@@ -60,9 +58,10 @@ const initialState: AppState = {
   captions: false,
   rec: false,
   tick: 0,
-  dial: '',
   joinCode: '',
   toast: null,
+  arkivLastFetch: {},
+  channelKeyVersions: {},
 }
 
 // teams is stored in component state, not in mockData; getTeam/getChan work from passed-in teams array
@@ -87,8 +86,11 @@ export default function WeaveApp() {
   const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [orgMembers, setOrgMembers] = useState<Array<{ name: string; address: string }>>([])
   const [showEnrollModal, setShowEnrollModal] = useState(false)
+  const [callLog, setCallLog] = useState<Array<{ id: string; name: string; dir: string; meta: string; time: string }>>([])
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const rtc = useWebRTC()
+  const activePeerLabelRef = useRef<string | null>(null)
 
   // Load identity on mount — check localStorage first, then IPC
   useEffect(() => {
@@ -111,17 +113,23 @@ export default function WeaveApp() {
     if (!window.weave?.identity?.load) setIdentityChecked(true)
   }, [])
 
-  // Load org members when switching to members rail
-  useEffect(() => {
-    if (s.rail !== 'members' || !identity?.handle) return
-    const orgName = identity.handle.includes('.')
-      ? identity.handle.split('.').slice(1, -2).join('.') // "admin.google.weave.eth" -> "google"
+  const refreshMembers = useCallback((handle?: string) => {
+    const h = handle ?? identity?.handle
+    if (!h) return
+    const orgName = h.includes('.')
+      ? h.split('.').slice(1, -2).join('.')
       : ''
     if (!orgName) return
     window.weave?.org?.listMembers?.(orgName).then((list: Array<{ name: string; address: string }>) => {
       setOrgMembers(list || [])
     }).catch(() => {})
-  }, [s.rail, identity])
+  }, [identity])
+
+  // Load org members when switching to members rail
+  useEffect(() => {
+    if (s.rail !== 'members') return
+    refreshMembers()
+  }, [s.rail, refreshMembers])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -145,23 +153,84 @@ export default function WeaveApp() {
     return () => { if (tickTimer.current) clearInterval(tickTimer.current) }
   }, [])
 
+  // Subscribe to incoming Nostr DMs pushed from main process
+  useEffect(() => {
+    if (!identity) return
+    const handler = (_event: unknown, { from, content }: { from: string; content: string }) => {
+      setS(prev => {
+        const peer = from || 'unknown'
+        const existing = prev.dms[peer] || []
+        return { ...prev, dms: { ...prev.dms, [peer]: [...existing, { mine: false, time: 'now', text: content }] } }
+      })
+    }
+    window.weave?.on?.('weave:dm:received', handler as (...args: unknown[]) => void)
+    return () => { window.weave?.off?.('weave:dm:received', handler as (...args: unknown[]) => void) }
+  }, [identity])
+
+  // Start Arkiv poller when identity and channels are known
+  useEffect(() => {
+    if (!identity) return
+    const h = identity.handle ?? ''
+    const org = h.includes('.') ? h.split('.').slice(1, -2).join('.') : ''
+    const myLabel = h.includes('.') ? h.split('.')[0] : h
+    if (!org || !myLabel) return
+    const channels = teams.flatMap(t => t.channels.map(c => c.id))
+    if (!channels.length) return
+    let stopFn: (() => void) | undefined
+    startArkivPoller(org, myLabel, channels, (action) => {
+      if (action.type === 'ARKIV_MESSAGES_RECEIVED') {
+        const { channel, messages } = action.payload as { channel: string; messages: { id: string; sender: string; timestamp: number; text: string }[] }
+        // Find which team owns this channel
+        const ownerTeam = teams.find(t => t.channels.some(c => c.id === channel))
+        if (!ownerTeam) return
+        const k = chanKey(ownerTeam.id, channel)
+        setS(prev => {
+          const existing = prev.msgs[k] || []
+          const newMsgs = messages
+            .filter(m => !existing.some(e => e.id === m.id))
+            .map(m => ({ id: m.id, who: m.sender, time: new Date(m.timestamp).toLocaleTimeString(), text: m.text, reactions: [], replies: [] }))
+          if (!newMsgs.length) return prev
+          return { ...prev, msgs: { ...prev.msgs, [k]: [...existing, ...newMsgs] } }
+        })
+      }
+    }).then(stop => { stopFn = stop })
+    return () => { stopFn?.() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identity, teams.length])
+
   function say(msg: string) {
     if (toastTimer.current) clearTimeout(toastTimer.current)
     setS(prev => ({ ...prev, toast: msg }))
     toastTimer.current = setTimeout(() => setS(prev => ({ ...prev, toast: null })), 3200)
   }
 
+  // Derive org name from handle: "alice.myorg.weave.eth" → "myorg"
+  const orgName = (() => {
+    const h = identity?.handle ?? ''
+    return h.includes('.') ? h.split('.').slice(1, -2).join('.') : ''
+  })()
+
   // --- Actions ---
   const send = () => {
     const text = s.draft.trim()
     if (!text) return
     if (s.rail === 'chat') {
+      // Optimistically add to local state immediately
       const list = [...(s.dms[s.dm] || []), { mine: true, time: 'now', text }]
       setS(prev => ({ ...prev, dms: { ...prev.dms, [prev.dm]: list }, draft: '' }))
+      // Deliver via Tor/Nostr/Arkiv in background
+      if (orgName && s.dm) {
+        window.weave?.chat?.sendDM?.({ org: orgName, peerLabel: s.dm, text }).catch(() => {})
+      }
     } else {
       const k = chanKey(s.team, s.channel)
       const list = [...(s.msgs[k] || []), { id: 'm' + Date.now(), who: 'me', time: 'now', text, reactions: [], replies: [] }]
       setS(prev => ({ ...prev, msgs: { ...prev.msgs, [k]: list }, draft: '' }))
+      // Persist to Arkiv
+      if (orgName && s.channel && s.channelKeyVersions) {
+        const keyVersion = (s.channelKeyVersions as Record<string, number>)[chanKey(s.team, s.channel)] ?? 0
+        window.weave?.arkiv?.postMessage?.({ org: orgName, channel: s.channel, keyVersion, text }).catch(() => {})
+      }
     }
   }
 
@@ -215,11 +284,18 @@ export default function WeaveApp() {
   }
 
   const startMeet = (title: string) => {
-    setS(prev => ({ ...prev, call: { state: 'live', title, base: 0, people: ['me', 'maya', 'arjun', 'priya', 'kabir', 'devika'] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: true }))
+    // Group call (no specific peer to signal — local audio only until peers join)
+    activePeerLabelRef.current = null
+    setS(prev => ({ ...prev, call: { state: 'live', title, base: 0, people: ['me'] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: false }))
+    // Acquire mic for local monitoring even without a peer
+    rtc.startCall('').catch(() => {})
   }
 
   const ring = (id: string, kind: string) => {
+    activePeerLabelRef.current = id
     setS(prev => ({ ...prev, call: { state: 'ringing', with: id, title: id + ' · ' + kind, base: 0, people: ['me', id] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: kind === 'video' }))
+    // Start WebRTC and signal the peer
+    rtc.startCall(id).catch(() => {})
   }
 
   const toggleShare = () => {
@@ -244,6 +320,18 @@ export default function WeaveApp() {
     const secs = s.call ? s.call.base + s.tick : 0
     const mm = String(Math.floor(secs / 60)).padStart(2, '0')
     const ss2 = String(secs % 60).padStart(2, '0')
+    rtc.endCall()
+    const peerLabel = activePeerLabelRef.current
+    activePeerLabelRef.current = null
+    if (peerLabel) {
+      setCallLog(prev => [...prev, {
+        id: String(Date.now()),
+        name: peerLabel,
+        dir: 'out',
+        meta: 'Voice',
+        time: 'just now',
+      }])
+    }
     setS(prev => ({ ...prev, call: null, callMode: 'grid', hand: false, rec: false, captions: false }))
     say(`Call ended · ${mm}:${ss2}`)
   }
@@ -285,26 +373,6 @@ export default function WeaveApp() {
   const ringWith = s.call?.state === 'ringing' ? s.call.with : undefined
   const ringPerson = ringWith ? { name: ringWith, initials: ringWith.slice(0, 2).toUpperCase(), tint: '#eae9e9', ink: '#444141' } : null
 
-  const activityItems = [
-    { title: 'Priya mentioned you in #critique', body: '"…@ravi can you confirm the halftone scope before the onboarding review?"', icon: 'ph-at', tint: '#e9f8ff', ink: '#004961', time: '09:31', weight: 600, nav: { rail: 'teams' as RailId, team: 'design', channel: 'critique' } },
-    { title: '3 unread in #design-system', body: 'Arjun pinned the radius decision.', icon: 'ph-hash', tint: '#eae7e7', ink: '#444141', time: '08:52', weight: 600, nav: { rail: 'teams' as RailId, team: 'design', channel: 'system' } },
-    { title: 'Guest token expires in 4 days', body: 'tarun.weave.eth · brand-refresh · ERC-1155 lapses on chain.', icon: 'ph-hourglass-high', tint: '#fff1f4', ink: '#aa0b56', time: '08:02', weight: 400, nav: { modal: 'members' } },
-    { title: 'Missed call from Priya Iyer', body: 'Stealth address rotated; she redialled once.', icon: 'ph-phone-x', tint: '#fff1f4', ink: '#aa0b56', time: 'Yest', weight: 400, nav: { rail: 'calls' as RailId } },
-    { title: 'Notes agent posted a summary', body: '#critique · two decisions, one owner.', icon: 'ph-robot', tint: '#eae7e7', ink: '#444141', time: 'Yest', weight: 400, nav: { rail: 'teams' as RailId, team: 'design', channel: 'critique' } },
-  ]
-
-  function handleActivityNav(nav: { rail?: RailId; team?: string; channel?: string; modal?: string }) {
-    setS(prev => ({
-      ...prev,
-      ...(nav.rail ? { rail: nav.rail } : {}),
-      ...(nav.team ? { team: nav.team } : {}),
-      ...(nav.channel ? { channel: nav.channel } : {}),
-      ...(nav.modal ? { modal: nav.modal as ModalId } : {}),
-    }))
-  }
-
-  const memberIds = ['me', 'maya', 'arjun', 'priya', 'devika', 'kabir', 'tarun', 'notes']
-
   if (!identityChecked) return null
 
   if (!identity) {
@@ -322,14 +390,15 @@ export default function WeaveApp() {
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
         <Header
           onOpenPalette={() => setS(prev => ({ ...prev, palette: true, pq: '' }))}
-          onMeetNow={() => startMeet('Meet now')}
           onOpenMembers={() => setS(prev => ({ ...prev, modal: 'members' }))}
+          identity={identity ?? undefined}
         />
       </div>
       {showEnrollModal && identity && (
         <OrgAdminPanel
           adminHandle={identity.handle}
-          onClose={() => { setShowEnrollModal(false); setShowAdminPanel(false) }}
+          onEnrolled={refreshMembers}
+          onClose={() => { setShowEnrollModal(false); setShowAdminPanel(false); refreshMembers() }}
         />
       )}
 
@@ -337,7 +406,6 @@ export default function WeaveApp() {
         <NavRail
           active={s.rail}
           onSelect={(id: RailId) => setS(prev => ({ ...prev, rail: id }))}
-          onInvite={() => setS(prev => ({ ...prev, modal: 'invite' }))}
         />
 
         <Sidebar
@@ -352,8 +420,7 @@ export default function WeaveApp() {
           mic={s.mic}
           dmOrder={s.dmOrder}
           dms={s.dms}
-          callLog={[]}
-          filesScope={s.filesScope}
+          callLog={callLog}
           members={orgMembers}
           isAdmin={!!identity?.handle?.startsWith('admin.')}
           onToggleTeam={id => setS(prev => ({ ...prev, teamOpen: { ...prev.teamOpen, [id]: !prev.teamOpen[id] }, team: id }))}
@@ -364,7 +431,6 @@ export default function WeaveApp() {
           onLeaveVoice={leaveVoice}
           onOpenCreate={() => setS(prev => ({ ...prev, modal: 'create', newName: '', newDesc: '', newKind: 'standard' }))}
           onOpenPalette={() => setS(prev => ({ ...prev, palette: true, pq: '' }))}
-          onSetFilesScope={id => setS(prev => ({ ...prev, filesScope: id }))}
           onEnrollMember={() => setShowEnrollModal(true)}
         />
 
@@ -424,33 +490,15 @@ export default function WeaveApp() {
 
           {s.rail === 'calls' && !callActive && !isRinging && (
             <CallsPageView
-              callLog={[]}
-              dial={s.dial}
-              onKeypad={k => setS(prev => ({ ...prev, dial: prev.dial + k }))}
-              onDialBack={() => setS(prev => ({ ...prev, dial: prev.dial.slice(0, -1) }))}
-              onDialCall={() => ring('devika', 'audio')}
+              callLog={callLog}
               onCallBack={id => ring(id, 'audio')}
             />
-          )}
-
-          {s.rail === 'files' && !callActive && !isRinging && (
-            <FilesView files={[]} />
           )}
 
           {s.rail === 'members' && !callActive && !isRinging && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(32,30,29,.45)', fontSize: 13 }}>
               {orgMembers.length === 0 ? 'No members enrolled yet — use "Enroll member" to add your first.' : `${orgMembers.length} member${orgMembers.length !== 1 ? 's' : ''} in this org`}
             </div>
-          )}
-
-          {s.rail === 'meet' && !callActive && !isRinging && (
-            <MeetView
-              meetings={[]}
-              joinCode={s.joinCode}
-              onJoinCodeChange={v => setS(prev => ({ ...prev, joinCode: v }))}
-              onJoin={title => startMeet(title)}
-              onMeetNow={() => startMeet('Meet now')}
-            />
           )}
 
           {callActive && s.call && (
@@ -466,7 +514,11 @@ export default function WeaveApp() {
               tick={s.tick}
               callChat={s.callChat}
               callDraft={s.callDraft}
-              onToggleMic={() => setS(prev => ({ ...prev, mic: !prev.mic }))}
+              onToggleMic={() => setS(prev => {
+                const nextMic = !prev.mic
+                rtc.toggleMic(nextMic)
+                return { ...prev, mic: nextMic }
+              })}
               onToggleCam={() => setS(prev => ({ ...prev, cam: !prev.cam }))}
               onToggleShare={toggleShare}
               onToggleHand={() => { setS(prev => ({ ...prev, hand: !prev.hand })); say(s.hand ? 'Hand lowered' : 'Hand raised') }}
@@ -529,14 +581,7 @@ export default function WeaveApp() {
 
       {s.modal === 'members' && (
         <MembersModal
-          channelTitle={'#' + (currentChan?.name || '')}
-          teamMembers={currentTeam?.members || 0}
-          memberIds={memberIds}
-          removed={s.removed}
-          roleOverride={s.roleOverride}
-          onSetRole={(id, role) => setS(prev => ({ ...prev, roleOverride: { ...prev.roleOverride, [id]: role } }))}
-          onRemove={id => { setS(prev => ({ ...prev, removed: { ...prev.removed, [id]: true } })); say((id === 'me' ? 'You' : id) + ' removed from #' + (currentChan?.name || '')) }}
-          onOpenInvite={() => setS(prev => ({ ...prev, modal: 'invite' }))}
+          members={orgMembers}
           onClose={() => setS(prev => ({ ...prev, modal: null }))}
         />
       )}

@@ -13,5 +13,5 @@
     "paths": {}
   },
   "include": ["main/**/*"],
-  "exclude": ["node_modules", "dist", "renderer"]
+  "exclude": ["node_modules", "dist", "renderer", "main/preload.ts"]
 }

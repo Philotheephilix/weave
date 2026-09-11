@@ -4,10 +4,11 @@ import type { OrgMember } from '@/lib/ipc'
 
 export interface OrgAdminPanelProps {
   adminHandle: string
+  onEnrolled?: () => void
   onClose: () => void
 }
 
-export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelProps) {
+export default function OrgAdminPanel({ adminHandle, onEnrolled, onClose }: OrgAdminPanelProps) {
   const parts = adminHandle.split('.')
   const orgName = parts.length >= 4 && parts[0] === 'admin' ? parts[1] : null
 
@@ -49,6 +50,7 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
         window.weave?.org?.listMembers(orgName)
           .then(list => setMembers(list))
           .catch(() => {})
+        onEnrolled?.()
       }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Enrollment failed')
@@ -67,7 +69,7 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.7)',
+        background: 'rgba(32,30,29,.45)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -77,31 +79,31 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
     >
       <div
         style={{
-          background: '#1f2937',
-          borderRadius: 12,
+          background: '#fff',
+          borderRadius: 2,
           padding: 24,
           minWidth: 480,
           maxWidth: 560,
           width: '100%',
-          color: '#f9fafb',
+          color: '#201e1d',
           position: 'relative',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+          boxShadow: '0 8px 32px rgba(32,30,29,.18)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Org Admin Panel</h2>
-            <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#9ca3af' }}>{adminHandle}</p>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#201e1d' }}>Org Admin Panel</h2>
+            <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'rgba(32,30,29,.55)' }}>{adminHandle}</p>
           </div>
           <button
             onClick={onClose}
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#9ca3af',
+              color: 'rgba(32,30,29,.55)',
               cursor: 'pointer',
               padding: '4px 6px',
-              borderRadius: 6,
+              borderRadius: 2,
               fontSize: 18,
               lineHeight: 1,
             }}
@@ -112,14 +114,14 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
         </div>
 
         <section style={{ marginBottom: 24 }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: '#6b7280' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'rgba(32,30,29,.55)' }}>
             Enrolled Members
           </h3>
 
           {loadingMembers ? (
-            <p style={{ margin: 0, fontSize: 13.5, color: '#9ca3af' }}>Loading…</p>
+            <p style={{ margin: 0, fontSize: 13.5, color: 'rgba(32,30,29,.5)' }}>Loading…</p>
           ) : members.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13.5, color: '#9ca3af' }}>No members enrolled yet.</p>
+            <p style={{ margin: 0, fontSize: 13.5, color: 'rgba(32,30,29,.5)' }}>No members enrolled yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {members.map((m, i) => (
@@ -130,16 +132,16 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
                     gridTemplateColumns: '1fr auto auto',
                     gap: '0 16px',
                     alignItems: 'center',
-                    padding: '8px 12px',
-                    background: '#111827',
-                    borderRadius: 8,
+                    padding: '8px 10px',
+                    background: 'rgba(32,30,29,.04)',
+                    borderRadius: 2,
                     fontSize: 13,
                   }}
                 >
-                  <span style={{ fontWeight: 500, color: '#e5e7eb' }}>
+                  <span style={{ fontWeight: 500, color: '#201e1d' }}>
                     {m.name}.{orgName}.weave.eth
                   </span>
-                  <span style={{ color: '#6b7280', fontFamily: 'monospace', fontSize: 12 }}>
+                  <span style={{ color: 'rgba(32,30,29,.55)', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 12 }}>
                     {truncateAddress(m.address)}
                   </span>
                   <span
@@ -148,8 +150,8 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
                       fontWeight: 600,
                       padding: '2px 8px',
                       borderRadius: 99,
-                      background: '#064e3b',
-                      color: '#34d399',
+                      background: 'rgba(0,136,176,.1)',
+                      color: '#0088b0',
                     }}
                   >
                     active
@@ -161,20 +163,20 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
         </section>
 
         {/* Divider */}
-        <div style={{ height: 1, background: '#374151', marginBottom: 20 }} />
+        <div style={{ height: 1, background: 'rgba(32,30,29,.1)', marginBottom: 20 }} />
 
         {/* Section 2: Enroll New Member */}
         <section>
-          <h3 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: '#6b7280' }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'rgba(32,30,29,.55)' }}>
             Enroll New Member
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginBottom: 5 }}>
+              <label style={{ display: 'block', fontSize: 12, color: 'rgba(32,30,29,.5)', marginBottom: 5 }}>
                 Member handle
               </label>
-              <div style={{ display: 'flex', alignItems: 'center', background: '#374151', border: '1px solid #4b5563', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid rgba(32,30,29,.22)', borderRadius: 2, overflow: 'hidden' }}>
                 <input
                   type="text"
                   value={memberName}
@@ -185,19 +187,19 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
                     background: 'transparent',
                     border: 'none',
                     outline: 'none',
-                    color: '#f9fafb',
+                    color: '#201e1d',
                     padding: '9px 12px',
                     fontSize: 13.5,
                   }}
                 />
-                <span style={{ paddingRight: 12, fontSize: 12.5, color: '#6b7280', whiteSpace: 'nowrap' }}>
+                <span style={{ paddingRight: 12, fontSize: 12.5, color: 'rgba(32,30,29,.45)', whiteSpace: 'nowrap' }}>
                   .{orgName}.weave.eth
                 </span>
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginBottom: 5 }}>
+              <label style={{ display: 'block', fontSize: 12, color: 'rgba(32,30,29,.5)', marginBottom: 5 }}>
                 Ethereum wallet address
               </label>
               <input
@@ -207,27 +209,27 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
                 placeholder="0x..."
                 style={{
                   width: '100%',
-                  background: '#374151',
-                  border: '1px solid #4b5563',
-                  borderRadius: 8,
+                  background: '#fff',
+                  border: '1px solid rgba(32,30,29,.22)',
+                  borderRadius: 2,
                   outline: 'none',
-                  color: '#f9fafb',
+                  color: '#201e1d',
                   padding: '9px 12px',
                   fontSize: 13.5,
                   boxSizing: 'border-box',
-                  fontFamily: 'monospace',
+                  fontFamily: 'ui-monospace,Menlo,monospace',
                 }}
               />
             </div>
 
             {successMsg && (
-              <p style={{ margin: 0, fontSize: 13, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#006786', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="ph-duotone ph-check-circle" style={{ fontSize: 16 }} />
                 {successMsg}
               </p>
             )}
             {errorMsg && (
-              <p style={{ margin: 0, fontSize: 13, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#aa0b56', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="ph-duotone ph-warning-circle" style={{ fontSize: 16 }} />
                 {errorMsg}
               </p>
@@ -239,10 +241,10 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
               style={{
                 alignSelf: 'flex-start',
                 padding: '9px 20px',
-                background: canEnroll ? '#0088b0' : '#374151',
-                color: canEnroll ? '#fff' : '#6b7280',
+                background: canEnroll ? '#0088b0' : 'rgba(32,30,29,.1)',
+                color: canEnroll ? '#fff' : 'rgba(32,30,29,.4)',
                 border: 'none',
-                borderRadius: 8,
+                borderRadius: 2,
                 fontSize: 13.5,
                 fontWeight: 600,
                 cursor: canEnroll ? 'pointer' : 'not-allowed',

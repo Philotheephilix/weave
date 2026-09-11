@@ -112,6 +112,20 @@ contract WeavePermissionedRegistry {
         return (r.owner, r.resolver, r.roleBitmap, r.expiry, r.tokenVersion);
     }
 
+    // ── ENSv2 IRegistry interface ─────────────────────────────────────────────
+    // Required by ENSv2 Universal Resolver to traverse the registry hierarchy.
+    // getSubregistry: returns sub-registry for a label (none for leaf names).
+    // getResolver: returns the wildcard resolver for any label in this registry.
+    function getSubregistry(string calldata /*label*/) external pure returns (address) {
+        // Our registry is a leaf — members don't have their own sub-registries.
+        return address(0);
+    }
+
+    function getResolver(string calldata /*label*/) external view returns (address) {
+        // All names in this registry resolve via the wildcard resolver.
+        return wildcardResolver;
+    }
+
     // ── Registration ──────────────────────────────────────────────────────────
     function registerMember(string calldata label, address _owner) external onlyRegistrar {
         _register(label, _owner, MEMBER_ROLES, type(uint64).max);

@@ -12,6 +12,8 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@arkiv-network/sdk": "^0.8.0",
+    "@ensdomains/ensjs": "^4.3.1",
     "@noble/ciphers": "^0.6.0",
     "@noble/curves": "^1.4.0",
     "@noble/hashes": "^1.4.0",
@@ -20,6 +22,7 @@
     "concurrently": "^8.0.0",
     "electron": "^32.3.3",
     "helia": "^3.0.0",
+    "keytar": "^7.9.0",
     "nostr-tools": "^2.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",

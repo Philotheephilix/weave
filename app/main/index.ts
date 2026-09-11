@@ -6,6 +6,7 @@ import { DHTDiscovery } from './dht-discovery.js'
 import { NostrDelivery } from './nostr-delivery.js'
 import { IdentityManager, createIdentity } from './identity-manager.js'
 import { registerIpcHandlers } from './ipc-handlers.js'
+import { ArkivManager } from './arkiv-manager.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -25,7 +26,10 @@ async function bootstrap(): Promise<void> {
     dht.announce(identity.viewPriv, identity.viewPub, onion.onionAddress)
   }).catch(() => {})
 
-  registerIpcHandlers(tor, dht, nostr, idMgr, identity)
+  // Initialise ArkivManager lazily — only active when WEAVE_ARKIV_ENABLED=true
+  const spendPrivHex = `0x${Buffer.from(identity.spendPriv).toString('hex')}` as `0x${string}`
+  const arkiv = new ArkivManager(spendPrivHex)
+  await arkiv.init()
 
   const win = new BrowserWindow({
     width: 1200,
@@ -36,6 +40,8 @@ async function bootstrap(): Promise<void> {
       nodeIntegration: false,
     },
   })
+
+  registerIpcHandlers(tor, dht, nostr, idMgr, identity, win, arkiv)
 
   await win.loadFile(path.join(__dirname, '..', '..', 'renderer', 'out', 'index.html'))
 

@@ -22,7 +22,7 @@ contract WeaveRegistryTest is Test {
     function setUp() public {
         resolver  = new WeaveWildcardResolver();
         registry  = new WeavePermissionedRegistry(address(resolver));
-        registrar = new WeaveRegistrar(address(registry), address(resolver));
+        registrar = new WeaveRegistrar(address(registry), address(resolver), address(0));
         notifLog  = new NotificationLog(keystoneForwarder);
 
         // wire up roles

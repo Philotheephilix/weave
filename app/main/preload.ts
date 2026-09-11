@@ -29,4 +29,33 @@ contextBridge.exposeInMainWorld('weave', {
     compute: (viewPub: string, spendPub: string) =>
       ipcRenderer.invoke('weave:stealth:compute', viewPub, spendPub),
   },
+  call: {
+    signal: (args: object) => ipcRenderer.invoke('weave:call:signal', args),
+    onSignal: (cb: (payload: { from: string; signal: object }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, payload: { from: string; signal: object }) => cb(payload)
+      ipcRenderer.on('weave:call:signal', handler)
+      return () => ipcRenderer.removeListener('weave:call:signal', handler)
+    },
+  },
+  arkiv: {
+    // Channel key management
+    storeChannelKey:     (args: object) => ipcRenderer.invoke('weave:arkiv:storeChannelKey', args),
+    fetchChannelKey:     (args: object) => ipcRenderer.invoke('weave:arkiv:fetchChannelKey', args),
+    getLatestKeyVersion: (args: object) => ipcRenderer.invoke('weave:arkiv:getLatestKeyVersion', args),
+    rotateChannelKey:    (args: object) => ipcRenderer.invoke('weave:arkiv:rotateChannelKey', args),
+    // Message storage
+    postMessage:         (args: object) => ipcRenderer.invoke('weave:arkiv:postMessage', args),
+    fetchMessages:       (args: object) => ipcRenderer.invoke('weave:arkiv:fetchMessages', args),
+    // DM storage
+    postDM:              (args: object) => ipcRenderer.invoke('weave:arkiv:postDM', args),
+    fetchDMs:            (args: object) => ipcRenderer.invoke('weave:arkiv:fetchDMs', args),
+    // Member management
+    addChannelMember:    (args: object) => ipcRenderer.invoke('weave:arkiv:addChannelMember', args),
+    listChannelMembers:  (args: object) => ipcRenderer.invoke('weave:arkiv:listChannelMembers', args),
+  },
+  chat: {
+    sendDM: (args: object) => ipcRenderer.invoke('weave:chat:sendDM', args),
+  },
+  on:  (channel: string, cb: (...args: unknown[]) => void) => ipcRenderer.on(channel, cb),
+  off: (channel: string, cb: (...args: unknown[]) => void) => ipcRenderer.removeListener(channel, cb),
 })
