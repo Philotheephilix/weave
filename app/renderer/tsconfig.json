@@ -10,17 +10,11 @@
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "paths": {}
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
-  "include": [
-    "index.tsx",
-    "App.tsx",
-    "styles.css",
-    "lib/**/*",
-    "components/Layout.tsx",
-    "components/StatusBar.tsx",
-    "components/CopyableAddress.tsx",
-    "components/ErrorBoundary.tsx",
-    "pages/**/*"
-  ]
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["node_modules", "out", "renderer", "app"]
 }

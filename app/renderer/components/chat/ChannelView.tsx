@@ -6,6 +6,16 @@ import MessageList from './MessageList'
 import MessageComposer from './MessageComposer'
 import ThreadPanel from './ThreadPanel'
 
+function TabBtn({ label, isActive, onClick }: { label: string; isActive: boolean; onClick: () => void }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{ padding: '6px 12px 9px', fontSize: 13.5, fontWeight: isActive ? 600 : 400, color: isActive ? '#004961' : hover ? '#0088b0' : 'rgba(32,30,29,.78)', boxShadow: `inset 0 -2px 0 0 ${isActive ? '#0088b0' : 'transparent'}`, cursor: 'pointer', background: 'transparent' }}>
+      {label}
+    </button>
+  )
+}
+
 interface ChannelViewProps {
   team: Team
   channel: Channel
@@ -94,18 +104,9 @@ export default function ChannelView(props: ChannelViewProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '10px 20px 0', marginTop: 8, borderBottom: '1px solid rgba(32,30,29,.1)' }}>
-          {tabs.map(t => {
-            const [tabHover, setTabHover] = useState(false)
-            const isActive = tab === t.id
-            return (
-              <button key={t.id} onClick={() => props.onSetTab(t.id)}
-                onMouseEnter={() => setTabHover(true)}
-                onMouseLeave={() => setTabHover(false)}
-                style={{ padding: '6px 12px 9px', fontSize: 13.5, fontWeight: isActive ? 600 : 400, color: isActive ? '#004961' : tabHover ? '#0088b0' : 'rgba(32,30,29,.78)', boxShadow: `inset 0 -2px 0 0 ${isActive ? '#0088b0' : 'transparent'}`, cursor: 'pointer', background: 'transparent' }}>
-                {t.label}
-              </button>
-            )
-          })}
+          {tabs.map(t => (
+            <TabBtn key={t.id} label={t.label} isActive={tab === t.id} onClick={() => props.onSetTab(t.id)} />
+          ))}
           <div style={{ flex: 1 }}></div>
           {props.showPrivacy && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 6, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, letterSpacing: '.04em', color: '#006786' }}>

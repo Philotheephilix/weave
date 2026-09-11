@@ -73,7 +73,7 @@ export default function InviteModal({ channelTitle, inviteQ, invited, inviteRole
                 const [sHover, setSHover] = useState(false)
                 return (
                   <button key={s.id}
-                    onClick={() => onInviteQChange(s.handle) || onAddInvite()}
+                    onClick={() => { onInviteQChange(s.handle); onAddInvite() }}
                     onMouseEnter={() => setSHover(true)}
                     onMouseLeave={() => setSHover(false)}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 9px', background: sHover ? '#e9f8ff' : '#f8f4f4', border: `1px solid ${sHover ? '#0088b0' : 'rgba(32,30,29,.14)'}`, borderRadius: 2, fontSize: 12.5, cursor: 'pointer' }}>

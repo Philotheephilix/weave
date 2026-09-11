@@ -14,6 +14,40 @@ interface CallsPageViewProps {
 
 const KEYPAD = ['1','2','3','4','5','6','7','8','9','*','0','#']
 
+function KeypadBtn({ k, onPress }: { k: string; onPress: () => void }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button onClick={onPress} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{ padding: '11px 0', background: hover ? '#e9f8ff' : '#f8f4f4', border: `1px solid ${hover ? '#0088b0' : 'rgba(32,30,29,.12)'}`, borderRadius: 2, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 17, cursor: 'pointer' }}>
+      {k}
+    </button>
+  )
+}
+
+function CallLogRow({ entry, onCallBack }: { entry: CallLogEntry; onCallBack: () => void }) {
+  const [rowHover, setRowHover] = useState(false)
+  const [cbHover, setCbHover] = useState(false)
+  const p = people[entry.id] || people.me
+  const icon = entry.dir === 'in' ? 'ph-phone-incoming' : entry.dir === 'out' ? 'ph-phone-outgoing' : 'ph-phone-x'
+  const color = entry.dir === 'missed' ? '#aa0b56' : '#006786'
+  return (
+    <div onMouseEnter={() => setRowHover(true)} onMouseLeave={() => setRowHover(false)}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 8px', borderBottom: '1px solid rgba(32,30,29,.08)', background: rowHover ? 'rgba(32,30,29,.04)' : 'transparent' }}>
+      <i className={`ph-duotone ${icon}`} style={{ fontSize: 19, color }}></i>
+      <span style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, background: p.tint, color: p.ink, fontSize: 11, fontWeight: 600, borderRadius: 2 }}>{p.initials}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>{entry.name}</span>
+        <span style={{ display: 'block', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10, color: 'rgba(32,30,29,.7)' }}>{entry.meta}</span>
+      </span>
+      <span style={{ fontSize: 12, color: 'rgba(32,30,29,.66)' }}>{entry.time}</span>
+      <button onClick={onCallBack} onMouseEnter={() => setCbHover(true)} onMouseLeave={() => setCbHover(false)} title="Call back"
+        style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: 2, color: '#006786', background: cbHover ? 'rgba(0,136,176,.12)' : 'transparent', cursor: 'pointer' }}>
+        <i className="ph-duotone ph-phone-call" style={{ fontSize: 17 }}></i>
+      </button>
+    </div>
+  )
+}
+
 function callIcon(dir: string) {
   return dir === 'in' ? 'ph-phone-incoming' : dir === 'out' ? 'ph-phone-outgoing' : 'ph-phone-x'
 }
@@ -33,33 +67,9 @@ export default function CallsPageView({ callLog, dial, onKeypad, onDialBack, onD
         <div>
           <h6 style={{ margin: '0 0 8px', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(32,30,29,.66)', fontWeight: 600 }}>Recent</h6>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {callLog.map((k, i) => {
-              const p = people[k.id] || people.me
-              const [rowHover, setRowHover] = useState(false)
-              const [cbHover, setCbHover] = useState(false)
-              return (
-                <div key={i}
-                  onMouseEnter={() => setRowHover(true)}
-                  onMouseLeave={() => setRowHover(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 8px', borderBottom: '1px solid rgba(32,30,29,.08)', background: rowHover ? 'rgba(32,30,29,.04)' : 'transparent' }}>
-                  <i className={`ph-duotone ${callIcon(k.dir)}`} style={{ fontSize: 19, color: callColor(k.dir) }}></i>
-                  <span style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, background: p.tint, color: p.ink, fontSize: 11, fontWeight: 600, borderRadius: 2 }}>{p.initials}</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>{k.name}</span>
-                    <span style={{ display: 'block', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10, color: 'rgba(32,30,29,.7)' }}>{k.meta}</span>
-                  </span>
-                  <span style={{ fontSize: 12, color: 'rgba(32,30,29,.66)' }}>{k.time}</span>
-                  <button
-                    onClick={() => onCallBack(k.id)}
-                    onMouseEnter={() => setCbHover(true)}
-                    onMouseLeave={() => setCbHover(false)}
-                    title="Call back"
-                    style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: 2, color: '#006786', background: cbHover ? 'rgba(0,136,176,.12)' : 'transparent', cursor: 'pointer' }}>
-                    <i className="ph-duotone ph-phone-call" style={{ fontSize: 17 }}></i>
-                  </button>
-                </div>
-              )
-            })}
+            {callLog.map((k, i) => (
+              <CallLogRow key={i} entry={k} onCallBack={() => onCallBack(k.id)} />
+            ))}
           </div>
         </div>
 
@@ -69,17 +79,7 @@ export default function CallsPageView({ callLog, dial, onKeypad, onDialBack, onD
             {dial || 'dial a handle'}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 7, marginTop: 12 }}>
-            {KEYPAD.map(k => {
-              const [kHover, setKHover] = useState(false)
-              return (
-                <button key={k} onClick={() => onKeypad(k)}
-                  onMouseEnter={() => setKHover(true)}
-                  onMouseLeave={() => setKHover(false)}
-                  style={{ padding: '11px 0', background: kHover ? '#e9f8ff' : '#f8f4f4', border: `1px solid ${kHover ? '#0088b0' : 'rgba(32,30,29,.12)'}`, borderRadius: 2, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 17, cursor: 'pointer' }}>
-                  {k}
-                </button>
-              )
-            })}
+            {KEYPAD.map(k => <KeypadBtn key={k} k={k} onPress={() => onKeypad(k)} />)}
           </div>
           <div style={{ display: 'flex', gap: 7, marginTop: 12 }}>
             <button onClick={onDialCall}

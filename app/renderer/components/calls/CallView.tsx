@@ -3,6 +3,27 @@ import { useState } from 'react'
 import type { CallState, CallPanelId, CallMode } from '@/lib/types'
 import { people } from '@/lib/mockData'
 
+function CtlBtn({ label, icon, on, act }: { label: string; icon: string; on: boolean; act: () => void }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button onClick={act} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} title={label}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 58, padding: '7px 9px', borderRadius: 2, background: on ? '#e9f8ff' : hover ? 'rgba(0,136,176,.14)' : 'transparent', color: on ? '#004961' : '#201e1d', border: `1px solid ${on ? '#0088b0' : 'rgba(32,30,29,.16)'}`, cursor: 'pointer' }}>
+      <i className={`ph-duotone ${icon}`} style={{ fontSize: 20 }}></i>
+      <span style={{ fontSize: 10.5, fontWeight: 600 }}>{label}</span>
+    </button>
+  )
+}
+
+function PanelTabBtn({ label, isActive, onClick }: { label: string; isActive: boolean; onClick: () => void }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{ padding: '6px 11px 8px', fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? '#004961' : 'rgba(32,30,29,.78)', boxShadow: `inset 0 -2px 0 0 ${isActive ? '#0088b0' : 'transparent'}`, cursor: 'pointer', background: 'transparent' }}>
+      {label}
+    </button>
+  )
+}
+
 interface CallViewProps {
   call: CallState
   callMode: CallMode
@@ -155,19 +176,7 @@ export default function CallView(props: CallViewProps) {
 
         {/* Controls */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '10px 18px 16px' }}>
-          {controls.map((c, i) => {
-            const [ctlHover, setCtlHover] = useState(false)
-            return (
-              <button key={i} onClick={c.act}
-                onMouseEnter={() => setCtlHover(true)}
-                onMouseLeave={() => setCtlHover(false)}
-                title={c.label}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 58, padding: '7px 9px', borderRadius: 2, background: c.on ? '#e9f8ff' : ctlHover ? 'rgba(0,136,176,.14)' : 'transparent', color: c.on ? '#004961' : '#201e1d', border: `1px solid ${c.on ? '#0088b0' : 'rgba(32,30,29,.16)'}`, cursor: 'pointer' }}>
-                <i className={`ph-duotone ${c.icon}`} style={{ fontSize: 20 }}></i>
-                <span style={{ fontSize: 10.5, fontWeight: 600 }}>{c.label}</span>
-              </button>
-            )
-          })}
+          {controls.map((c, i) => <CtlBtn key={i} label={c.label} icon={c.icon} on={c.on} act={c.act} />)}
           <button onClick={props.onEndCall}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 58, marginLeft: 10, padding: '7px 9px', borderRadius: 2, background: '#d6006c', color: '#fff', cursor: 'pointer' }}>
             <i className="ph-duotone ph-phone-x" style={{ fontSize: 20 }}></i>
@@ -180,18 +189,9 @@ export default function CallView(props: CallViewProps) {
       {panelOpen && (
         <div style={{ width: 312, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#f3f2f2', borderLeft: '1px solid rgba(32,30,29,.12)' }}>
           <div style={{ display: 'flex', gap: 2, padding: '12px 12px 0' }}>
-            {(['people', 'chat'] as CallPanelId[]).map(tab => {
-              const [tHover, setTHover] = useState(false)
-              const isActive = callPanel === tab
-              return (
-                <button key={tab} onClick={() => props.onSetCallPanel(tab)}
-                  onMouseEnter={() => setTHover(true)}
-                  onMouseLeave={() => setTHover(false)}
-                  style={{ padding: '6px 11px 8px', fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? '#004961' : 'rgba(32,30,29,.78)', boxShadow: `inset 0 -2px 0 0 ${isActive ? '#0088b0' : 'transparent'}`, cursor: 'pointer', background: 'transparent' }}>
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              )
-            })}
+            {(['people', 'chat'] as CallPanelId[]).map(tab => (
+              <PanelTabBtn key={tab} label={tab.charAt(0).toUpperCase() + tab.slice(1)} isActive={callPanel === tab} onClick={() => props.onSetCallPanel(tab)} />
+            ))}
           </div>
 
           {callPanel === 'people' && (
