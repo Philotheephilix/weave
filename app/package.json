@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "concurrently \"npm run renderer:dev\" \"tsc -w\" \"electron .\"",
     "build": "npm run renderer:build && tsc",
-    "renderer:build": "vite build renderer --outDir ../renderer/out",
-    "renderer:dev": "vite renderer --port 3000",
+    "renderer:build": "vite build --outDir renderer/out",
+    "renderer:dev": "vite --port 3000",
     "test": "jest --passWithNoTests"
   },
   "dependencies": {

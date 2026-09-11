@@ -14,7 +14,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // ensure browser-safe builds: polyfill or stub Node builtins only as needed
+      '@': path.resolve(__dirname, 'renderer'),
     },
   },
   optimizeDeps: {

@@ -14,19 +14,58 @@ interface MembersModalProps {
   onClose: () => void
 }
 
-export default function MembersModal({ channelTitle, teamMembers, memberIds, removed, roleOverride, onSetRole, onRemove, onOpenInvite, onClose }: MembersModalProps) {
-  const [closeHover, setCloseHover] = useState(false)
-  const [inviteHover, setInviteHover] = useState(false)
-  const visible = memberIds.filter(id => !removed[id])
+function MemberRow({ id, roleOverride, onSetRole, onRemove }: {
+  id: string
+  roleOverride: Record<string, string>
+  onSetRole: (id: string, role: string) => void
+  onRemove: (id: string) => void
+}) {
+  const [rowHover, setRowHover] = useState(false)
+  const [rmHover, setRmHover] = useState(false)
+  const p = people[id] || people.me
+  const role = roleOverride[id] || p.role.split(' · ')[0]
 
-  function presenceStatus(id: string) {
-    const p = people[id]
-    if (!p) return { status: 'offline · queued', bg: '#eae7e7', ink: '#444141' }
+  function presenceStatus() {
     if (id === 'tarun') return { status: 'guest · 4d left', bg: '#fff1f4', ink: '#aa0b56' }
     if (p.presence === '#0088b0') return { status: 'reachable', bg: '#e9f8ff', ink: '#004961' }
     if (p.presence === '#edbb00') return { status: 'away', bg: '#eae7e7', ink: '#444141' }
     return { status: 'offline · queued', bg: '#eae7e7', ink: '#444141' }
   }
+  const { status, bg: stBg, ink: stInk } = presenceStatus()
+
+  return (
+    <tr onMouseEnter={() => setRowHover(true)} onMouseLeave={() => setRowHover(false)}
+      style={{ background: rowHover ? 'rgba(32,30,29,.04)' : 'transparent' }}>
+      <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, background: p.tint, color: p.ink, fontSize: 10.5, fontWeight: 600, borderRadius: 2 }}>{p.initials}</span>
+          <span style={{ fontWeight: 600 }}>{id === 'me' ? 'You' : p.name}</span>
+        </span>
+      </td>
+      <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11.5, color: 'rgba(32,30,29,.75)' }}>{p.handle}</td>
+      <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)' }}>
+        <select value={role} onChange={e => onSetRole(id, e.target.value)}
+          style={{ fontFamily: 'inherit', fontSize: 13, padding: '4px 6px', background: '#f8f4f4', border: '1px solid rgba(32,30,29,.14)', borderRadius: 2 }}>
+          {['Owner', 'Moderator', 'Member', 'Guest'].map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </td>
+      <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, letterSpacing: '.03em', padding: '3px 8px', background: stBg, color: stInk, borderRadius: 2 }}>{status}</span>
+      </td>
+      <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)', textAlign: 'right' }}>
+        <button onClick={() => onRemove(id)} onMouseEnter={() => setRmHover(true)} onMouseLeave={() => setRmHover(false)} title="Remove"
+          style={{ display: 'inline-grid', placeItems: 'center', width: 28, height: 28, borderRadius: 2, color: rmHover ? '#aa0b56' : 'rgba(32,30,29,.7)', background: rmHover ? 'rgba(214,0,108,.12)' : 'transparent', cursor: 'pointer' }}>
+          <i className="ph-duotone ph-user-minus" style={{ fontSize: 16 }}></i>
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+export default function MembersModal({ channelTitle, teamMembers, memberIds, removed, roleOverride, onSetRole, onRemove, onOpenInvite, onClose }: MembersModalProps) {
+  const [closeHover, setCloseHover] = useState(false)
+  const [inviteHover, setInviteHover] = useState(false)
+  const visible = memberIds.filter(id => !removed[id])
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 20, background: 'rgba(45,43,43,.5)', zIndex: 40 }}>
@@ -60,45 +99,9 @@ export default function MembersModal({ channelTitle, teamMembers, memberIds, rem
               </tr>
             </thead>
             <tbody>
-              {visible.map(id => {
-                const p = people[id] || people.me
-                const role = roleOverride[id] || p.role.split(' · ')[0]
-                const { status, bg: stBg, ink: stInk } = presenceStatus(id)
-                const [rowHover, setRowHover] = useState(false)
-                const [rmHover, setRmHover] = useState(false)
-                return (
-                  <tr key={id}
-                    onMouseEnter={() => setRowHover(true)}
-                    onMouseLeave={() => setRowHover(false)}
-                    style={{ background: rowHover ? 'rgba(32,30,29,.04)' : 'transparent' }}>
-                    <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                        <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, background: p.tint, color: p.ink, fontSize: 10.5, fontWeight: 600, borderRadius: 2 }}>{p.initials}</span>
-                        <span style={{ fontWeight: 600 }}>{id === 'me' ? 'You' : p.name}</span>
-                      </span>
-                    </td>
-                    <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 11.5, color: 'rgba(32,30,29,.75)' }}>{p.handle}</td>
-                    <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)' }}>
-                      <select value={role} onChange={e => onSetRole(id, e.target.value)}
-                        style={{ fontFamily: 'inherit', fontSize: 13, padding: '4px 6px', background: '#f8f4f4', border: '1px solid rgba(32,30,29,.14)', borderRadius: 2 }}>
-                        {['Owner', 'Moderator', 'Member', 'Guest'].map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    </td>
-                    <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, letterSpacing: '.03em', padding: '3px 8px', background: stBg, color: stInk, borderRadius: 2 }}>{status}</span>
-                    </td>
-                    <td style={{ padding: 9, borderBottom: '1px solid rgba(32,30,29,.08)', textAlign: 'right' }}>
-                      <button onClick={() => onRemove(id)}
-                        onMouseEnter={() => setRmHover(true)}
-                        onMouseLeave={() => setRmHover(false)}
-                        title="Remove"
-                        style={{ display: 'inline-grid', placeItems: 'center', width: 28, height: 28, borderRadius: 2, color: rmHover ? '#aa0b56' : 'rgba(32,30,29,.7)', background: rmHover ? 'rgba(214,0,108,.12)' : 'transparent', cursor: 'pointer' }}>
-                        <i className="ph-duotone ph-user-minus" style={{ fontSize: 16 }}></i>
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
+              {visible.map(id => (
+                <MemberRow key={id} id={id} roleOverride={roleOverride} onSetRole={onSetRole} onRemove={onRemove} />
+              ))}
             </tbody>
           </table>
         </div>
