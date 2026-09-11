@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run renderer:dev\" \"tsc -w\" \"electron .\"",
-    "build": "npm run renderer:build && tsc",
-    "renderer:build": "vite build --outDir renderer/out",
+    "build": "npm run renderer:build && tsc && tsc -p tsconfig.preload.json",
+    "renderer:build": "vite build",
     "renderer:dev": "vite --port 3000",
     "test": "jest --passWithNoTests"
   },

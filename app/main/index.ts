@@ -37,13 +37,7 @@ async function bootstrap(): Promise<void> {
     },
   })
 
-  const isDev = !app.isPackaged
-  if (isDev) {
-    await win.loadURL('http://localhost:3000')
-    win.webContents.openDevTools()
-  } else {
-    await win.loadFile(path.join(__dirname, '..', 'renderer', 'out', 'index.html'))
-  }
+  await win.loadFile(path.join(__dirname, '..', '..', 'renderer', 'out', 'index.html'))
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
