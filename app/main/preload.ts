@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('weave', {
   },
   dht: {
     announce: (onion: string) => ipcRenderer.invoke('weave:dht:announce', onion),
-    lookup:   (viewPub: string) => ipcRenderer.invoke('weave:dht:lookup', viewPub),
+    lookup:   () => ipcRenderer.invoke('weave:dht:lookup'),
   },
   tor: {
     proxy: () => ipcRenderer.invoke('weave:tor:proxy'),
