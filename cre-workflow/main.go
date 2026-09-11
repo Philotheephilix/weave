@@ -20,6 +20,7 @@ import (
 
 type SecretConfig struct {
 	SpendingKey string `json:"spending_key"`
+	ViewKey     string `json:"view_key"`
 }
 
 type Config struct {
@@ -42,9 +43,11 @@ func InitWorkflow(config *Config, _ *slog.Logger, _ cresdk.SecretsProvider) (cre
 }
 
 func runScan(config *Config, runtime cresdk.TeeRuntime, _ *cron.Payload) (string, error) {
-	// Fetch spending key from Vault DON — stays in enclave memory only.
+	// Fetch both keys from Vault DON — stays in enclave memory only.
+	// ERC-5564: view key is used for ECDH scanning; spend key derives spendPub for the pubkeyHash.
 	secrets, err := runtime.GetSecrets([]*cresdk.SecretRequest{
 		{Id: config.SecretIDs.SpendingKey},
+		{Id: config.SecretIDs.ViewKey},
 	}).Await()
 	if err != nil {
 		return "", fmt.Errorf("GetSecrets: %w", err)
@@ -52,6 +55,10 @@ func runScan(config *Config, runtime cresdk.TeeRuntime, _ *cron.Payload) (string
 	spendingKey, err := hex.DecodeString(strings.TrimPrefix(secrets[0].Value, "0x"))
 	if err != nil {
 		return "", fmt.Errorf("spending key hex decode: %w", err)
+	}
+	viewKey, err := hex.DecodeString(strings.TrimPrefix(secrets[1].Value, "0x"))
+	if err != nil {
+		return "", fmt.Errorf("view key hex decode: %w", err)
 	}
 
 	donRuntime := runtime.UsingTheDons()
@@ -90,15 +97,15 @@ func runScan(config *Config, runtime cresdk.TeeRuntime, _ *cron.Payload) (string
 		})
 	}
 
-	matches, err := scanAnnouncements(spendingKey, announcements)
+	spendPub := deriveSpendPub(spendingKey)
+
+	matches, err := scanAnnouncements(viewKey, spendPub, announcements)
 	if err != nil {
 		return "", err
 	}
 	if len(matches) == 0 {
 		return "no matches", nil
 	}
-
-	spendPub := deriveSpendPub(spendingKey)
 	pubkeyHash := sha256.Sum256(spendPub)
 
 	payload, err := json.Marshal(struct {

@@ -74,9 +74,13 @@ func scalarMulToCompressed(k int64) []byte {
 // ── Stealth address tests ─────────────────────────────────────────────────────
 
 func TestComputeStealthAddress_Length(t *testing.T) {
-	secret := make([]byte, 32)
-	secret[0] = 0xde
-	addr := computeStealthAddress(secret)
+	sharedX := make([]byte, 32)
+	sharedX[0] = 0xde
+	spendPub := scalarMulToCompressed(5) // arbitrary valid spend pubkey
+	addr, err := computeStealthAddress(sharedX, spendPub)
+	if err != nil {
+		t.Fatalf("computeStealthAddress: %v", err)
+	}
 	// must be 0x + 40 hex chars
 	if len(addr) != 42 {
 		t.Errorf("expected 42 chars, got %d: %s", len(addr), addr)
@@ -89,9 +93,10 @@ func TestComputeStealthAddress_Length(t *testing.T) {
 // ── Scan tests ────────────────────────────────────────────────────────────────
 
 func TestScanAnnouncements_Empty(t *testing.T) {
-	scalar := make([]byte, 32)
-	scalar[31] = 1
-	matches, err := scanAnnouncements(scalar, nil)
+	viewKey := make([]byte, 32)
+	viewKey[31] = 1
+	spendPub := scalarMulToCompressed(5)
+	matches, err := scanAnnouncements(viewKey, spendPub, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -101,24 +106,32 @@ func TestScanAnnouncements_Empty(t *testing.T) {
 }
 
 func TestScanAnnouncements_Match(t *testing.T) {
-	// spending key scalar = 3
+	// view key scalar = 7, spend key scalar = 3
+	viewKey := make([]byte, 32)
+	viewKey[31] = 7
 	spendKey := make([]byte, 32)
 	spendKey[31] = 3
 
 	// ephemeral key scalar = 2 → ephemeral pubkey = 2*G
 	ephPub := scalarMulToCompressed(2)
 
-	// compute expected stealth address: ECDH(3, 2G) = 6G → keccak(x)
-	shared, err := ecdhSecp256k1(spendKey, ephPub)
+	// derive spendPub from spendKey
+	spendPub := deriveSpendPub(spendKey)
+
+	// compute expected stealth address: ECDH(viewKey, ephPub) → shared, then computeStealthAddress(shared, spendPub)
+	shared, err := ecdhSecp256k1(viewKey, ephPub)
 	if err != nil {
 		t.Fatalf("setup ECDH: %v", err)
 	}
-	expected := computeStealthAddress(shared)
+	expected, err := computeStealthAddress(shared, spendPub)
+	if err != nil {
+		t.Fatalf("setup computeStealthAddress: %v", err)
+	}
 
 	anns := []ERC5564Announcement{
 		{ID: "ann-001", EphemeralPubkey: ephPub, StealthAddress: expected},
 	}
-	matches, err := scanAnnouncements(spendKey, anns)
+	matches, err := scanAnnouncements(viewKey, spendPub, anns)
 	if err != nil {
 		t.Fatalf("scanAnnouncements: %v", err)
 	}
@@ -128,14 +141,15 @@ func TestScanAnnouncements_Match(t *testing.T) {
 }
 
 func TestScanAnnouncements_NoMatch(t *testing.T) {
-	spendKey := make([]byte, 32)
-	spendKey[31] = 3
+	viewKey := make([]byte, 32)
+	viewKey[31] = 7
+	spendPub := scalarMulToCompressed(3)
 
 	ephPub := scalarMulToCompressed(2)
 	anns := []ERC5564Announcement{
 		{ID: "ann-999", EphemeralPubkey: ephPub, StealthAddress: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"},
 	}
-	matches, err := scanAnnouncements(spendKey, anns)
+	matches, err := scanAnnouncements(viewKey, spendPub, anns)
 	if err != nil {
 		t.Fatalf("scanAnnouncements: %v", err)
 	}
@@ -145,13 +159,14 @@ func TestScanAnnouncements_NoMatch(t *testing.T) {
 }
 
 func TestScanAnnouncements_MalformedPubkeySkipped(t *testing.T) {
-	spendKey := make([]byte, 32)
-	spendKey[31] = 1
+	viewKey := make([]byte, 32)
+	viewKey[31] = 1
+	spendPub := scalarMulToCompressed(5)
 	anns := []ERC5564Announcement{
 		{ID: "bad", EphemeralPubkey: []byte{0x00}, StealthAddress: "0x1234"},
 	}
 	// must not error — malformed entries are skipped
-	matches, err := scanAnnouncements(spendKey, anns)
+	matches, err := scanAnnouncements(viewKey, spendPub, anns)
 	if err != nil {
 		t.Fatalf("expected no error for malformed entry, got: %v", err)
 	}

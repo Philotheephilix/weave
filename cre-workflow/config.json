@@ -4,7 +4,8 @@
   "notification_contract": "0xE0E923359d2Af2Ce48a23128F206EC7f67fEad39",
   "gas_limit": 500000,
   "secret_ids": {
-    "spending_key": "weave_spending_key_hex"
+    "spending_key": "weave_spending_key_hex",
+    "view_key": "weave_view_key_hex"
   },
-  "last_scanned_block": 0
+  "last_scanned_block": 11679450
 }

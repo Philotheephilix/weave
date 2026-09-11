@@ -160,23 +160,81 @@ func deriveSpendPub(priv []byte) []byte {
 	return out
 }
 
-// computeStealthAddress returns the Ethereum address from an ERC-5564 shared secret.
-// NOTE: uses sha256 as stand-in for keccak256 — consistent across TEE scanner and client.
-// Replace with keccak256 before mainnet.
-func computeStealthAddress(sharedSecret []byte) string {
-	h := sha256.Sum256(sharedSecret)
-	return "0x" + hex.EncodeToString(h[12:])
+// computeStealthAddress returns the Ethereum address from an ERC-5564 shared secret
+// and the recipient's spend public key (compressed 33-byte secp256k1).
+//
+// Derivation (mirrors stealth-address.ts checkStealthAddress):
+//   h      = sha256(sharedX)                       — scalar
+//   P      = spendPub + h·G                        — stealth pubkey (point addition)
+//   addr   = sha256(uncompressed_P[1:])[12:]       — NOTE: sha256 not keccak256, consistent with TS
+//
+// Replace both sides with keccak256 before mainnet.
+func computeStealthAddress(sharedX []byte, spendPub []byte) (string, error) {
+	if len(spendPub) != 33 {
+		return "", fmt.Errorf("spendPub must be 33 bytes, got %d", len(spendPub))
+	}
+	// h = sha256(sharedX) interpreted as a scalar
+	hBytes := sha256.Sum256(sharedX)
+	h := new(big.Int).SetBytes(hBytes[:])
+	h.Mod(h, secp256k1N)
+
+	// Decompress spendPub into an ecPoint
+	prefix := spendPub[0]
+	if prefix != 0x02 && prefix != 0x03 {
+		return "", fmt.Errorf("invalid spendPub prefix 0x%02x", prefix)
+	}
+	sx := new(big.Int).SetBytes(spendPub[1:])
+	rhs := new(big.Int).Exp(sx, big.NewInt(3), secp256k1P)
+	rhs.Add(rhs, big.NewInt(7))
+	rhs.Mod(rhs, secp256k1P)
+	exp := new(big.Int).Add(secp256k1P, big.NewInt(1))
+	exp.Rsh(exp, 2)
+	sy := new(big.Int).Exp(rhs, exp, secp256k1P)
+	if (sy.Bit(0) == 0) != (prefix == 0x02) {
+		sy.Sub(secp256k1P, sy)
+	}
+	spendPoint := ecPoint{sx, sy}
+
+	// h·G
+	G := ecPoint{secp256k1Gx, secp256k1Gy}
+	hG := scalarMul(h, G)
+
+	// P = spendPoint + h·G
+	stealthPoint := pointAdd(spendPoint, hG)
+	if isInfinity(stealthPoint) {
+		return "", fmt.Errorf("stealth point is at infinity")
+	}
+
+	// Serialize uncompressed (04 || x || y), then sha256(x||y)[12:]
+	uncompressed := make([]byte, 65)
+	uncompressed[0] = 0x04
+	xb := stealthPoint.x.Bytes()
+	copy(uncompressed[1+32-len(xb):33], xb)
+	yb := stealthPoint.y.Bytes()
+	copy(uncompressed[33+32-len(yb):], yb)
+	// hash the 64-byte payload after the 04 prefix, matching TS: sha256(uncompressed.slice(1))
+	addrHash := sha256.Sum256(uncompressed[1:])
+	return "0x" + hex.EncodeToString(addrHash[12:]), nil
 }
 
-// scanAnnouncements checks ERC-5564 announcements against spendingKey.
-func scanAnnouncements(spendingKey []byte, announcements []ERC5564Announcement) ([]string, error) {
+// scanAnnouncements checks ERC-5564 announcements using the ERC-5564 view key for ECDH
+// and the spend public key for stealth address derivation.
+func scanAnnouncements(viewKey []byte, spendPub []byte, announcements []ERC5564Announcement) ([]string, error) {
 	matches := make([]string, 0)
 	for _, ann := range announcements {
-		shared, err := ecdhSecp256k1(spendingKey, ann.EphemeralPubkey)
+		// ECDH uses the VIEW key, not the spend key
+		shared, err := ecdhSecp256k1(viewKey, ann.EphemeralPubkey)
 		if err != nil {
 			continue // skip malformed entries
 		}
-		if strings.EqualFold(computeStealthAddress(shared), ann.StealthAddress) {
+		candidate, err := computeStealthAddress(shared, spendPub)
+		if err != nil {
+			continue
+		}
+		// Compare case-insensitively, stripping 0x prefix
+		candidateHex := strings.TrimPrefix(strings.ToLower(candidate), "0x")
+		announcedHex := strings.TrimPrefix(strings.ToLower(ann.StealthAddress), "0x")
+		if candidateHex == announcedHex {
 			matches = append(matches, ann.ID)
 		}
 	}
