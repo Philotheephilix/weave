@@ -1,7 +1,7 @@
 import { getPublicKey, SimplePool } from 'nostr-tools'
 import { decode as nip19decode } from 'nostr-tools/nip19'
 import { wrapEvent, unwrapEvent } from 'nostr-tools/nip59'
-import type { Event } from 'nostr-tools'
+import type { Event, Filter } from 'nostr-tools'
 
 const DEFAULT_RELAYS = [
   'wss://relay.damus.io',
@@ -43,10 +43,10 @@ export class NostrDelivery {
     onMessage: (from: string, content: string) => void,
   ): () => void {
     const recipientPub = getPublicKey(recipientPriv)
+    const filter: Filter = { kinds: [1059], '#p': [recipientPub] }
     const sub = this.pool.subscribeMany(
       this.relays,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { kinds: [1059], '#p': [recipientPub] } as any,
+      filter,
       {
         onevent(event: Event) {
           try {

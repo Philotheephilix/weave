@@ -3,10 +3,7 @@ pragma solidity ^0.8.25;
 
 /// @dev ENSIP-10 ExtendedResolver — answers all *.weave.eth queries without
 ///      per-user on-chain registration. One resolver handles the entire namespace.
-///
-///      ENSv2 PermissionedResolver roles used:
-///        ROLE_SET_TEXT = 1 << 4 = 0x10
-///      authorizedSetters maps enforces per-name write access (full EAC wired in Phase 2).
+///      authorizedSetters enforces per-name write access.
 contract WeaveWildcardResolver {
     struct WeaveIdentity {
         bytes  stealthViewKey;   // secp256k1 compressed 33 bytes — ERC-5564 viewing key
@@ -53,7 +50,6 @@ contract WeaveWildcardResolver {
         delete identities[labelHash];
     }
 
-    /// @notice ENSv2 PermissionedResolver pattern: ROLE_SET_TEXT check
     function setIdentity(bytes32 labelHash, WeaveIdentity calldata identity) external {
         if (!authorizedSetters[msg.sender] && msg.sender != owner) revert NotAuthorized();
         identities[labelHash] = identity;
@@ -102,14 +98,13 @@ contract WeaveWildcardResolver {
         bytes memory h = "0123456789abcdef";
         bytes memory r = new bytes(2 + d.length * 2);
         r[0] = "0"; r[1] = "x";
-        for (uint i = 0; i < d.length; i++) {
+        for (uint256 i = 0; i < d.length; i++) {
             r[2 + i*2] = h[uint8(d[i]) >> 4];
             r[3 + i*2] = h[uint8(d[i]) & 0x0f];
         }
         return string(r);
     }
 
-    /// @notice ENSIP-10 supportsInterface
     function supportsInterface(bytes4 id) external pure returns (bool) {
         return id == 0x9061b923 // IExtendedResolver
             || id == 0x01ffc9a7; // IERC165

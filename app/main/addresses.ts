@@ -9,5 +9,5 @@ export const ADDRESSES = {
   NotificationLog:           '0x0137C879f88BcB177d7B11bEd7c690195d8D7C5c' as `0x${string}`,
 } as const
 
-export const SEPOLIA_RPC = 'https://gateway.tenderly.co/public/sepolia'
+export const SEPOLIA_RPC = 'https://eth-sepolia.g.alchemy.com/v2/oJTjnNCsJEOqYv3MMtrtT6LUFhwcW9pR'
 export const CHAIN_ID = 11155111

@@ -1,6 +1,5 @@
-// crypto.go — secp256k1 ECDH and ERC-5564 stealth address computation.
 // No build tag: compiles for all targets including tests.
-// main.go (wasip1 only) imports these via same package.
+// main.go (wasip1 only) imports these via the same package.
 
 package main
 
@@ -9,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strings"
 )
 
 // ERC5564Announcement mirrors an on-chain stealth address announcement.
@@ -17,8 +17,6 @@ type ERC5564Announcement struct {
 	EphemeralPubkey []byte `json:"ephemeralPubkey"`
 	StealthAddress  string `json:"stealthAddress"`
 }
-
-// ── secp256k1 curve parameters ────────────────────────────────────────────────
 
 var (
 	secp256k1P, _  = new(big.Int).SetString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F", 16)
@@ -29,7 +27,7 @@ var (
 
 type ecPoint struct{ x, y *big.Int }
 
-// infinity sentinel — ecPoint with nil fields represents the point at infinity.
+// ecPoint with nil fields represents the point at infinity.
 func isInfinity(pt ecPoint) bool { return pt.x == nil }
 
 func pointAdd(p1, p2 ecPoint) ecPoint {
@@ -40,12 +38,10 @@ func pointAdd(p1, p2 ecPoint) ecPoint {
 		return p1
 	}
 	p := secp256k1P
-	// P == Q: use doubling formula
 	if p1.x.Cmp(p2.x) == 0 {
 		if p1.y.Cmp(p2.y) == 0 {
 			return pointDouble(p1)
 		}
-		// P == -Q: result is point at infinity
 		return ecPoint{}
 	}
 	dx := new(big.Int).Sub(p2.x, p1.x)
@@ -98,7 +94,7 @@ func pointDouble(pt ecPoint) ecPoint {
 }
 
 func scalarMul(k *big.Int, pt ecPoint) ecPoint {
-	result := ecPoint{} // start at infinity
+	result := ecPoint{}
 	if isInfinity(pt) {
 		return result
 	}
@@ -180,28 +176,10 @@ func scanAnnouncements(spendingKey []byte, announcements []ERC5564Announcement) 
 		if err != nil {
 			continue // skip malformed entries
 		}
-		if stringsEqualFold(computeStealthAddress(shared), ann.StealthAddress) {
+		if strings.EqualFold(computeStealthAddress(shared), ann.StealthAddress) {
 			matches = append(matches, ann.ID)
 		}
 	}
 	return matches, nil
 }
 
-func stringsEqualFold(a, b string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := 0; i < len(a); i++ {
-		ca, cb := a[i], b[i]
-		if ca >= 'A' && ca <= 'Z' {
-			ca += 32
-		}
-		if cb >= 'A' && cb <= 'Z' {
-			cb += 32
-		}
-		if ca != cb {
-			return false
-		}
-	}
-	return true
-}

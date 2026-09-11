@@ -1,20 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-/// @dev ENSv2 RegistryRolesLib constants (all values exact from ENSv2 source):
-///   ROLE_REGISTRAR       = 1 << 0
-///   ROLE_UNREGISTER      = 1 << 12
-///   ROLE_RENEW           = 1 << 16
-///   ROLE_SET_SUBREGISTRY = 1 << 20
-///   ROLE_SET_RESOLVER    = 1 << 24
-///   ROLE_CAN_TRANSFER_ADMIN = (1<<28) << 128  (upper 128 bits)
-///
-/// ERC-1155 lifecycle:
-///   - Mint on register()
-///   - Burn on unregister() or re-registration after expiry
-///   - Burn+remint (same owner) on every grantRoles / revokeRoles call
-///   - tokenId = upper 224 bits of labelhash | lower 32 bits tokenVersion
-///   - Soulbound = no ROLE_CAN_TRANSFER_ADMIN in roleBitmap
+/// @dev Permissioned ENSv2-style registry for .weave.eth subnames.
+///      ERC-1155 lite: mint on register, burn on unregister or role change.
+///      tokenId = upper 224 bits of labelHash | lower 32 bits tokenVersion.
+///      Soulbound = no ROLE_CAN_TRANSFER_ADMIN in roleBitmap.
 contract WeavePermissionedRegistry {
     // ── Role constants ────────────────────────────────────────────────────────
     uint256 public constant ROLE_REGISTRAR       = 1 << 0;
@@ -187,22 +177,20 @@ contract WeavePermissionedRegistry {
     function grantRoles(bytes32 labelHash, uint256 additional) external onlyRegistrar {
         SubnameRecord storage r = records[labelHash];
         if (r.owner == address(0)) revert NotRegistered();
-        uint256 old = tokenIds[labelHash];
-        _burn(r.owner, old);
         r.roleBitmap |= additional;
-        r.tokenVersion += 1;
-        uint256 newId = _computeTokenId(labelHash, r.tokenVersion);
-        tokenIds[labelHash] = newId;
-        _mint(r.owner, newId);
-        emit TokenRegenerated(labelHash, old, newId);
+        _regenToken(labelHash, r);
     }
 
     function revokeRoles(bytes32 labelHash, uint256 toRemove) external onlyRegistrar {
         SubnameRecord storage r = records[labelHash];
         if (r.owner == address(0)) revert NotRegistered();
+        r.roleBitmap &= ~toRemove;
+        _regenToken(labelHash, r);
+    }
+
+    function _regenToken(bytes32 labelHash, SubnameRecord storage r) internal {
         uint256 old = tokenIds[labelHash];
         _burn(r.owner, old);
-        r.roleBitmap &= ~toRemove;
         r.tokenVersion += 1;
         uint256 newId = _computeTokenId(labelHash, r.tokenVersion);
         tokenIds[labelHash] = newId;
