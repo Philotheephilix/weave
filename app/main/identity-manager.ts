@@ -1,9 +1,10 @@
-import { createPublicClient, http, decodeAbiParameters, parseAbiParameters } from 'viem'
+import { createPublicClient, http } from 'viem'
 import { sepolia } from 'viem/chains'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import { x25519 } from '@noble/curves/ed25519'
 import { randomBytes } from '@noble/hashes/utils'
 import { sha256 } from '@noble/hashes/sha256'
+import { keccak_256 } from '@noble/hashes/sha3'
 import { ADDRESSES, SEPOLIA_RPC } from './addresses.js'
 
 export interface WeaveIdentity {
@@ -44,38 +45,22 @@ const WILDCARD_RESOLVER_ABI = [
     ],
     outputs: [{ name: '', type: 'bytes' }],
   },
+  {
+    name: 'identities',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: '', type: 'bytes32' }],
+    outputs: [
+      { name: 'stealthViewKey',  type: 'bytes' },
+      { name: 'stealthSpendKey', type: 'bytes' },
+      { name: 'x25519Pubkey',   type: 'bytes' },
+      { name: 'onionAddress',   type: 'bytes' },
+      { name: 'nostrPubkey',    type: 'bytes' },
+      { name: 'registeredAt',   type: 'uint64' },
+    ],
+  },
 ] as const
 
-function _encodeDnsName(label: string): Uint8Array {
-  if (!label || label.includes('.') || label.length > 63) throw new Error(`invalid label: ${label}`)
-  // label.weave.eth → \x{len}label\x05weave\x03eth\x00
-  const parts = [label, 'weave', 'eth']
-  const bufs = parts.map(p => {
-    const b = new TextEncoder().encode(p)
-    return Uint8Array.from([b.length, ...b])
-  })
-  const total = bufs.reduce((s, b) => s + b.length, 0) + 1
-  const out = new Uint8Array(total)
-  let off = 0
-  for (const b of bufs) { out.set(b, off); off += b.length }
-  out[off] = 0 // explicit null terminator
-  return out
-}
-
-function _encodeTextCalldata(key: string): `0x${string}` {
-  // selector(text(bytes32,string)) = 0x59d1d43c, but resolver uses ENSIP-10:
-  // resolve(bytes,bytes) where inner bytes is text(node, key)
-  // We pass ABI-encoded (bytes32 node, string key) as the data param
-  // node = namehash('alice.weave.eth') — resolver ignores it and uses dnsName
-  const keyBytes = new TextEncoder().encode(key)
-  const selector = '59d1d43c'
-  // ABI encode: (bytes32, string) — 32 bytes zero node + string
-  const node = '0'.repeat(64)
-  const offset = '0000000000000000000000000000000000000000000000000000000000000040'
-  const keyLen = keyBytes.length.toString(16).padStart(64, '0')
-  const keyHex = Buffer.from(keyBytes).toString('hex').padEnd(Math.ceil(keyBytes.length / 32) * 64, '0')
-  return `0x${selector}${node}${offset}${keyLen}${keyHex}` as `0x${string}`
-}
 
 export function createIdentity(): WeaveIdentity {
   const viewPriv  = secp256k1.utils.randomPrivateKey()
@@ -96,33 +81,31 @@ export class IdentityManager {
 
   async resolveHandle(label: string): Promise<ResolvedIdentity | null> {
     if (!ADDRESSES.WeaveWildcardResolver) return null
-    const dnsName = _encodeDnsName(label)
+    // Strip .weave.eth suffix if present, use the rest as the mapping key
+    const normalized = label.replace(/\.weave\.eth$/, '')
+    const labelHash = `0x${Buffer.from(keccak_256(new TextEncoder().encode(normalized))).toString('hex')}` as `0x${string}`
 
-    const textKeys = ['crypto.stealth.view', 'crypto.stealth.spend', 'crypto.x25519', 'network.onion.v3', 'social.nostr.pubkey']
-    const results: Record<string, string> = {}
+    try {
+      const id = await this.client.readContract({
+        address: ADDRESSES.WeaveWildcardResolver,
+        abi: WILDCARD_RESOLVER_ABI,
+        functionName: 'identities',
+        args: [labelHash],
+      }) as readonly [`0x${string}`, `0x${string}`, `0x${string}`, `0x${string}`, `0x${string}`, bigint]
 
-    for (const key of textKeys) {
-      try {
-        const data = _encodeTextCalldata(key)
-        const raw = await this.client.readContract({
-          address: ADDRESSES.WeaveWildcardResolver,
-          abi: WILDCARD_RESOLVER_ABI,
-          functionName: 'resolve',
-          args: [`0x${Buffer.from(dnsName).toString('hex')}` as `0x${string}`, data],
-        }) as `0x${string}`
-        const [decoded] = decodeAbiParameters(parseAbiParameters('string'), raw)
-        results[key] = decoded as string
-      } catch { /* key not set */ }
-    }
-
-    if (!results['network.onion.v3']) return null
-    const strip = (s: string) => s.startsWith('0x') ? s.slice(2) : s
-    return {
-      viewPub:      Buffer.from(strip(results['crypto.stealth.view']  ?? ''), 'hex'),
-      spendPub:     Buffer.from(strip(results['crypto.stealth.spend'] ?? ''), 'hex'),
-      noisePub:     Buffer.from(strip(results['crypto.x25519']        ?? ''), 'hex'),
-      onionAddress: results['network.onion.v3'],
-      nostrPub:     results['social.nostr.pubkey'] ?? '',
+      // id = [stealthViewKey, stealthSpendKey, x25519Pubkey, onionAddress, nostrPubkey, registeredAt]
+      if (!id[0] || id[0] === '0x') return null
+      const strip = (s: `0x${string}`) => s.startsWith('0x') ? s.slice(2) : s
+      const onionBytes = id[3] && id[3].length > 2 ? Buffer.from(strip(id[3]), 'hex').toString('utf8') : ''
+      return {
+        viewPub:      Buffer.from(strip(id[0]), 'hex'),
+        spendPub:     Buffer.from(strip(id[1]), 'hex'),
+        noisePub:     Buffer.from(strip(id[2]), 'hex'),
+        onionAddress: onionBytes,
+        nostrPub:     strip(id[4]),
+      }
+    } catch {
+      return null
     }
   }
 

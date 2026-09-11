@@ -717,11 +717,13 @@ export function registerIpcHandlers(
   }) => {
     if (!getArkiv()) return []
     const saved       = loadIdentity() as { handle?: string } | null
-    const myLabel     = saved?.handle ?? ''
-    const peerIdentity = await idMgr.resolveHandle(peerLabel)
+    // Normalize labels: strip .weave.eth so queries match stored data
+    const myLabel      = (saved?.handle ?? '').replace(/\.weave\.eth$/, '')
+    const normPeerLabel = peerLabel.replace(/\.weave\.eth$/, '')
+    const peerIdentity = await idMgr.resolveHandle(normPeerLabel)
     if (!peerIdentity) return []
     return getArkiv()!.fetchDMs(
-      org, myLabel, peerLabel, sinceTimestamp,
+      org, myLabel, normPeerLabel, sinceTimestamp,
       getIdentity().noisePriv, peerIdentity.noisePub,
     )
   })
@@ -824,10 +826,12 @@ export function registerIpcHandlers(
     org: string; peerLabel: string; text: string
   }) => {
     const saved       = loadIdentity() as { handle?: string } | null
-    const senderLabel = saved?.handle ?? ''
+    // Normalize labels: strip .weave.eth so storage is consistent
+    const senderLabel = (saved?.handle ?? '').replace(/\.weave\.eth$/, '')
+    const normPeerLabel = peerLabel.replace(/\.weave\.eth$/, '')
 
     // Resolve peer identity (ENS)
-    const peerIdentity = await idMgr.resolveHandle(peerLabel).catch(() => null)
+    const peerIdentity = await idMgr.resolveHandle(normPeerLabel).catch(() => null)
 
     let via: 'tor' | 'nostr' | 'arkiv-only' = 'arkiv-only'
 
@@ -864,7 +868,7 @@ export function registerIpcHandlers(
 
     // 3. Always persist in Arkiv for offline delivery
     if (getArkiv() && peerIdentity) {
-      await getArkiv()!.postDM(org, senderLabel, peerLabel, getIdentity().noisePriv, peerIdentity.noisePub, text).catch(() => {})
+      await getArkiv()!.postDM(org, senderLabel, normPeerLabel, getIdentity().noisePriv, peerIdentity.noisePub, text).catch(() => {})
     }
 
     return { ok: true, via }
