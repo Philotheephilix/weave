@@ -15,6 +15,7 @@
     "@noble/ciphers": "^0.6.0",
     "@noble/curves": "^1.4.0",
     "@noble/hashes": "^1.4.0",
+    "@phosphor-icons/web": "^2.1.2",
     "bittorrent-dht": "^10.0.0",
     "concurrently": "^8.0.0",
     "electron": "^32.3.3",
