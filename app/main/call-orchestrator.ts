@@ -1,9 +1,3 @@
-/**
- * Tor-only call orchestrator — Noise_XX over TCP via SOCKS5.
- * No WebRTC. No STUN. Calls only work when both users have active Tor onion services.
- * Ported from Philotheephilix/ghostcall.
- */
-
 import type { BrowserWindow } from 'electron'
 import { ipcMain } from 'electron'
 import { TorManager } from './tor-manager.js'
@@ -11,13 +5,9 @@ import { OnionServer } from './onion-server.js'
 import { noiseKeygen, NoiseSession } from './noise-session.js'
 import { connectToOnion } from './onion-client.js'
 import { setActiveTransport, clearTransport, isTransportActive, registerAudioIpcHandlers } from './audio-bridge.js'
+import { cliPort } from './cli-args.js'
 
-function cliCallPort(): number {
-  const prefix = '--call-port='
-  const arg = process.argv.find(a => a.startsWith(prefix))
-  return arg ? parseInt(arg.slice(prefix.length), 10) : 7331
-}
-const CALL_PORT = cliCallPort()
+const CALL_PORT = cliPort('call-port', 7331)
 
 let torMgr: TorManager | null = null
 const onionServer = new OnionServer()

@@ -8,19 +8,16 @@ import { IdentityManager, createIdentity } from './identity-manager.js'
 import { registerIpcHandlers, loadIdentity, deriveKeysFromSeed } from './ipc-handlers.js'
 import { ArkivManager } from './arkiv-manager.js'
 import { OnionListener } from './onion-listener.js'
+import { cliArg, cliPort } from './cli-args.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Allow per-instance Tor ports via CLI flags (e.g. --tor-socks-port=9052 --tor-control-port=9053)
-function cliArg(flag: string): string | undefined {
-  const prefix = `--${flag}=`
-  return process.argv.find(a => a.startsWith(prefix))?.slice(prefix.length)
-}
-const torSocksPort   = parseInt(cliArg('tor-socks-port')   ?? '9050', 10)
-const torControlPort = parseInt(cliArg('tor-control-port') ?? '9051', 10)
-const torDataDir     = cliArg('tor-data-dir') ?? undefined
-
-const tor = new TorManager({ socksPort: torSocksPort, controlPort: torControlPort, dataDir: torDataDir })
+// Per-instance Tor ports via CLI flags (e.g. --tor-socks-port=9052 --tor-control-port=9053)
+const tor = new TorManager({
+  socksPort:   cliPort('tor-socks-port', 9050),
+  controlPort: cliPort('tor-control-port', 9051),
+  dataDir:     cliArg('tor-data-dir'),
+})
 const dht          = new DHTDiscovery()
 const nostr        = new NostrDelivery()
 const idMgr        = new IdentityManager()

@@ -74,6 +74,9 @@ const REGISTRAR_ABI = [
           { name: 'x25519Pubkey',    type: 'bytes' },
           { name: 'onionAddress',    type: 'bytes' },
           { name: 'nostrPubkey',     type: 'bytes' },
+          { name: 'ethAddress',      type: 'address' },
+          { name: 'displayName',     type: 'string' },
+          { name: 'avatarUrl',       type: 'string' },
           { name: 'registeredAt',    type: 'uint64' },
         ],
       },
@@ -97,6 +100,9 @@ const REGISTRAR_ABI = [
           { name: 'x25519Pubkey',    type: 'bytes' },
           { name: 'onionAddress',    type: 'bytes' },
           { name: 'nostrPubkey',     type: 'bytes' },
+          { name: 'ethAddress',      type: 'address' },
+          { name: 'displayName',     type: 'string' },
+          { name: 'avatarUrl',       type: 'string' },
           { name: 'registeredAt',    type: 'uint64' },
         ],
       },
@@ -471,6 +477,9 @@ export function registerIpcHandlers(
         x25519Pubkey:    toHex(orgIdentity.noisePub),
         onionAddress:    '0x' as `0x${string}`,
         nostrPubkey:     `0x${'00'.repeat(32)}` as `0x${string}`,
+        ethAddress:      ethAddress,
+        displayName:     orgName,
+        avatarUrl:       '',
         registeredAt:    BigInt(Math.floor(Date.now() / 1000)),
       }
       const txHash = await walletClient.writeContract({
@@ -513,15 +522,19 @@ export function registerIpcHandlers(
       const toHex = (b: Uint8Array): `0x${string}` => `0x${Buffer.from(b).toString('hex')}`
       type ViemIdentityArg = {
         stealthViewKey: `0x${string}`; stealthSpendKey: `0x${string}`; x25519Pubkey: `0x${string}`;
-        onionAddress: `0x${string}`; nostrPubkey: `0x${string}`; registeredAt: bigint
+        onionAddress: `0x${string}`; nostrPubkey: `0x${string}`;
+        ethAddress: `0x${string}`; displayName: string; avatarUrl: string; registeredAt: bigint
       }
       let memberIdentityArg: ViemIdentityArg
       if (memberSeedPhrase && memberSeedPhrase.length === 12) {
-        const { identity: mi } = deriveKeysFromSeed(memberSeedPhrase)
+        const { identity: mi, ethAddress: memberEthAddr } = deriveKeysFromSeed(memberSeedPhrase)
         memberIdentityArg = {
           stealthViewKey: toHex(mi.viewPub), stealthSpendKey: toHex(mi.spendPub),
           x25519Pubkey: toHex(mi.noisePub),
           onionAddress: '0x' as `0x${string}`, nostrPubkey: `0x${'00'.repeat(32)}` as `0x${string}`,
+          ethAddress: memberEthAddr,
+          displayName: memberName,
+          avatarUrl: '',
           registeredAt: BigInt(Math.floor(Date.now() / 1000)),
         }
       } else {
@@ -531,6 +544,9 @@ export function registerIpcHandlers(
           x25519Pubkey: `0x${'00'.repeat(32)}` as `0x${string}`,
           onionAddress: '0x' as `0x${string}`,
           nostrPubkey: `0x${'00'.repeat(32)}` as `0x${string}`,
+          ethAddress: memberAddress as `0x${string}`,
+          displayName: memberName,
+          avatarUrl: '',
           registeredAt: BigInt(0),
         }
       }

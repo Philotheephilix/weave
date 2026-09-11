@@ -44,9 +44,8 @@ contract DeployWeave is Script {
 
         // Wire resolver into ENSv2 ETHRegistry so *.weave.eth resolves via ENSIP-10.
         // Requires deployer to own weave.eth on Sepolia ENSv2.
-        // TODO: Uncomment once weave.eth ownership is confirmed on Sepolia ENSv2.
-        // IENSEthRegistry ensRegistry = IENSEthRegistry(ENS_ETH_REGISTRY);
-        // ensRegistry.setResolver(WEAVE_ETH_NODE, address(resolver));
+        IENSEthRegistry ensRegistry = IENSEthRegistry(ENS_ETH_REGISTRY);
+        ensRegistry.setResolver(WEAVE_ETH_NODE, address(resolver));
 
         vm.stopBroadcast();
 

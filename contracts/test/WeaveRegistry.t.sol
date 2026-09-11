@@ -37,6 +37,9 @@ contract WeaveRegistryTest is Test {
             x25519Pubkey:    hex"aabbccddee",
             onionAddress:    bytes("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion"),
             nostrPubkey:     hex"aabbccddeeaabbccddeeaabbccddeeaabbccddeeaabbccddeeaabbccddeeaabb",
+            ethAddress:      alice,
+            displayName:     "Alice",
+            avatarUrl:       "",
             registeredAt:    uint64(block.timestamp)
         });
     }
@@ -169,6 +172,35 @@ contract WeaveRegistryTest is Test {
         bytes memory result = resolver.resolve(dnsName, callData);
         // result is abi.encode(string) — non-empty means identity set
         assertTrue(result.length > 0);
+    }
+
+    function test_resolver_multisegment_label_and_addr() public {
+        // philo.google.weave.eth — stored under keccak256("philo.google")
+        bytes32 lh = keccak256(bytes("philo.google"));
+        resolver.setIdentity(lh, dummyIdentity);
+
+        // DNS wire format: \x05philo\x06google\x05weave\x03eth\x00
+        bytes memory dnsName = abi.encodePacked(
+            uint8(5), "philo",
+            uint8(6), "google",
+            uint8(5), "weave",
+            uint8(3), "eth",
+            uint8(0)
+        );
+
+        // addr(bytes32) selector 0x3b3b57de should return alice's address
+        bytes memory callData = abi.encodeWithSelector(bytes4(0x3b3b57de), lh);
+        bytes memory result = resolver.resolve(dnsName, callData);
+        address returned = abi.decode(result, (address));
+        assertEq(returned, alice);
+
+        // text("name") should return displayName
+        bytes memory textCallData = abi.encodeWithSelector(
+            bytes4(0x59d1d43c), lh, "name"
+        );
+        bytes memory textResult = resolver.resolve(dnsName, textCallData);
+        string memory displayName = abi.decode(textResult, (string));
+        assertEq(displayName, "Alice");
     }
 
     function test_resolver_unauthorized_setIdentity_reverts() public {

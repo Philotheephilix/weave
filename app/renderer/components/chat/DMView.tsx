@@ -5,6 +5,11 @@ import { ensLabel, ensInitials, ensTint } from '@/lib/ens-display'
 import { ipcPeerReachable } from '@/lib/ipc'
 import MessageComposer from './MessageComposer'
 
+const OFFLINE_COLOR = '#9b9797'
+const ONLINE_COLOR  = '#4caf50'
+const AGENT_STATUS  = 'Agent · scoped to 2 channels'
+const DM_STATUS     = 'Direct message'
+
 interface DMViewProps {
   dmId: string
   messages: DMMessage[]
@@ -16,22 +21,38 @@ interface DMViewProps {
   onOpenMembers: () => void
 }
 
+interface HeaderButtonProps {
+  onClick: () => void
+  title: string
+  icon: string
+  color: string
+  hoverBg: string
+}
+
+function HeaderButton({ onClick, title, icon, color, hoverBg }: HeaderButtonProps) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} title={title}
+      style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 2, color, background: hover ? hoverBg : 'transparent', cursor: 'pointer' }}>
+      <i className={`ph-duotone ${icon}`} style={{ fontSize: 19 }}></i>
+    </button>
+  )
+}
+
 export default function DMView({ dmId, messages, draft, onDraft, onSend, onStartAudioCall, onStartVideoCall, onOpenMembers }: DMViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [presenceColor, setPresenceColor] = useState<string>('#9b9797')
-  const [dmStatus, setDmStatus] = useState<string>(dmId === 'notes' ? 'Agent · scoped to 2 channels' : 'Direct message')
+  const [presenceColor, setPresenceColor] = useState<string>(OFFLINE_COLOR)
+  const [dmStatus, setDmStatus] = useState<string>(dmId === 'notes' ? AGENT_STATUS : DM_STATUS)
   const [fingerprint, setFingerprint] = useState<string | null>(null)
 
   useEffect(() => {
+    setPresenceColor(OFFLINE_COLOR)
+    setFingerprint(null)
     if (dmId === 'notes') {
-      setDmStatus('Agent · scoped to 2 channels')
-      setPresenceColor('#9b9797')
-      setFingerprint(null)
+      setDmStatus(AGENT_STATUS)
       return
     }
-    setDmStatus('Direct message')
-    setPresenceColor('#9b9797')
-    setFingerprint(null)
+    setDmStatus(DM_STATUS)
     let cancelled = false
     window.weave?.resolve(dmId).then((meta) => {
       if (cancelled || !meta) return
@@ -43,21 +64,15 @@ export default function DMView({ dmId, messages, draft, onDraft, onSend, onStart
     // Probe Tor reachability (8s timeout inside IPC handler)
     ipcPeerReachable(dmId).then(({ reachable }) => {
       if (cancelled) return
-      if (reachable) {
-        setPresenceColor('#4caf50')
-        setDmStatus('Online via Tor')
-      } else {
-        setPresenceColor('#9b9797')
-        setDmStatus('Direct message')
-      }
+      setPresenceColor(reachable ? ONLINE_COLOR : OFFLINE_COLOR)
+      setDmStatus(reachable ? 'Online via Tor' : DM_STATUS)
     }).catch(() => { /* Tor not available */ })
     return () => { cancelled = true }
   }, [dmId])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
   const p = {
@@ -68,10 +83,6 @@ export default function DMView({ dmId, messages, draft, onDraft, onSend, onStart
     handle: dmId,
     presence: presenceColor,
   }
-  const [audioHover, setAudioHover] = useState(false)
-  const [videoHover, setVideoHover] = useState(false)
-  const [infoHover, setInfoHover] = useState(false)
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px 12px', borderBottom: '1px solid rgba(32,30,29,.1)' }}>
@@ -86,18 +97,9 @@ export default function DMView({ dmId, messages, draft, onDraft, onSend, onStart
           </div>
           <div style={{ fontSize: 12, color: 'rgba(32,30,29,.72)' }}>{dmStatus}</div>
         </div>
-        <button onClick={onStartAudioCall} onMouseEnter={() => setAudioHover(true)} onMouseLeave={() => setAudioHover(false)} title="Audio call"
-          style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 2, color: '#006786', background: audioHover ? 'rgba(0,136,176,.12)' : 'transparent', cursor: 'pointer' }}>
-          <i className="ph-duotone ph-phone" style={{ fontSize: 19 }}></i>
-        </button>
-        <button onClick={onStartVideoCall} onMouseEnter={() => setVideoHover(true)} onMouseLeave={() => setVideoHover(false)} title="Video call"
-          style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 2, color: '#006786', background: videoHover ? 'rgba(0,136,176,.12)' : 'transparent', cursor: 'pointer' }}>
-          <i className="ph-duotone ph-video-camera" style={{ fontSize: 19 }}></i>
-        </button>
-        <button onClick={onOpenMembers} onMouseEnter={() => setInfoHover(true)} onMouseLeave={() => setInfoHover(false)} title="Details"
-          style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 2, color: 'rgba(32,30,29,.7)', background: infoHover ? 'rgba(32,30,29,.07)' : 'transparent', cursor: 'pointer' }}>
-          <i className="ph-duotone ph-info" style={{ fontSize: 19 }}></i>
-        </button>
+        <HeaderButton onClick={onStartAudioCall} title="Audio call" icon="ph-phone" color="#006786" hoverBg="rgba(0,136,176,.12)" />
+        <HeaderButton onClick={onStartVideoCall} title="Video call" icon="ph-video-camera" color="#006786" hoverBg="rgba(0,136,176,.12)" />
+        <HeaderButton onClick={onOpenMembers} title="Details" icon="ph-info" color="rgba(32,30,29,.7)" hoverBg="rgba(32,30,29,.07)" />
       </div>
       <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 20px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
