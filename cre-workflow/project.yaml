@@ -1,10 +1,10 @@
 staging-settings:
   rpcs:
     - chain-name: "ethereum-mainnet"
-      url: "https://eth-mainnet.g.alchemy.com/v2/oJTjnNCsJEOqYv3MMtrtT6LUFhwcW9pR"
+      url: "https://eth-mainnet.g.alchemy.com/v2/alch_I7RtHwdMsa590uGHCV6jt"
     - chain-name: "ethereum-testnet-sepolia"
-      url: "https://eth-sepolia.g.alchemy.com/v2/oJTjnNCsJEOqYv3MMtrtT6LUFhwcW9pR"
+      url: "https://eth-sepolia.g.alchemy.com/v2/alch_I7RtHwdMsa590uGHCV6jt"
 production-settings:
   rpcs:
     - chain-name: "ethereum-mainnet"
-      url: "https://eth-mainnet.g.alchemy.com/v2/oJTjnNCsJEOqYv3MMtrtT6LUFhwcW9pR"
+      url: "https://eth-mainnet.g.alchemy.com/v2/alch_I7RtHwdMsa590uGHCV6jt"
