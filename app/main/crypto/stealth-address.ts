@@ -3,7 +3,7 @@
 // Replace both with keccak256 before mainnet.
 import { secp256k1 } from '@noble/curves/secp256k1'
 import { sha256 } from '@noble/hashes/sha256'
-import { ecdhSecp256k1 } from './secp256k1-ecdh'
+import { ecdhSecp256k1 } from './secp256k1-ecdh.js'
 
 export interface MetaAddress {
   viewPub: Uint8Array  // 33-byte compressed secp256k1

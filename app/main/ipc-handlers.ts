@@ -1,9 +1,9 @@
 import { ipcMain } from 'electron'
-import { TorManager } from './tor-manager'
-import { DHTDiscovery } from './dht-discovery'
-import { NostrDelivery } from './nostr-delivery'
-import { IdentityManager, createIdentity, WeaveIdentity } from './identity-manager'
-import { computeStealthAddress } from './crypto/stealth-address'
+import { TorManager } from './tor-manager.js'
+import { DHTDiscovery } from './dht-discovery.js'
+import { NostrDelivery } from './nostr-delivery.js'
+import { IdentityManager, createIdentity, WeaveIdentity } from './identity-manager.js'
+import { computeStealthAddress } from './crypto/stealth-address.js'
 
 export function registerIpcHandlers(
   tor: TorManager,

@@ -4,7 +4,7 @@ import { secp256k1 } from '@noble/curves/secp256k1'
 import { x25519 } from '@noble/curves/ed25519'
 import { randomBytes } from '@noble/hashes/utils'
 import { sha256 } from '@noble/hashes/sha256'
-import { ADDRESSES, SEPOLIA_RPC } from './addresses'
+import { ADDRESSES, SEPOLIA_RPC } from './addresses.js'
 
 export interface WeaveIdentity {
   viewPriv: Uint8Array

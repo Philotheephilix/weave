@@ -7,7 +7,7 @@ import { secp256k1 } from '@noble/curves/secp256k1'
 import { ed25519 } from '@noble/curves/ed25519'
 import { chacha20poly1305 } from '@noble/ciphers/chacha'
 import { randomBytes } from '@noble/hashes/utils'
-import { ecdhSecp256k1 } from './crypto/secp256k1-ecdh'
+import { ecdhSecp256k1 } from './crypto/secp256k1-ecdh.js'
 
 const DHT_TTL_MS = 10 * 60 * 1000
 

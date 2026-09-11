@@ -1,10 +1,10 @@
 import { app, BrowserWindow } from 'electron'
 import * as path from 'path'
-import { TorManager } from './tor-manager'
-import { DHTDiscovery } from './dht-discovery'
-import { NostrDelivery } from './nostr-delivery'
-import { IdentityManager, createIdentity } from './identity-manager'
-import { registerIpcHandlers } from './ipc-handlers'
+import { TorManager } from './tor-manager.js'
+import { DHTDiscovery } from './dht-discovery.js'
+import { NostrDelivery } from './nostr-delivery.js'
+import { IdentityManager, createIdentity } from './identity-manager.js'
+import { registerIpcHandlers } from './ipc-handlers.js'
 
 const tor   = new TorManager()
 const dht   = new DHTDiscovery()

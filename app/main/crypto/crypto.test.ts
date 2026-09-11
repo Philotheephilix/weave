@@ -1,6 +1,6 @@
-import { ecdhSecp256k1 } from './secp256k1-ecdh'
-import { computeStealthAddress, checkStealthAddress } from './stealth-address'
-import { NoiseXXSession } from './noise-xx'
+import { ecdhSecp256k1 } from './secp256k1-ecdh.js'
+import { computeStealthAddress, checkStealthAddress } from './stealth-address.js'
+import { NoiseXXSession } from './noise-xx.js'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import { randomBytes } from '@noble/hashes/utils'
 
