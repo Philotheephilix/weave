@@ -372,11 +372,50 @@ export default function WeaveApp() {
     const name = s.newName.trim()
     if (!name) return
     const newChan = { id: name, name, kind: s.newKind, unread: 0, desc: s.newDesc.trim() || `New ${s.newKind} channel.` }
-    setTeams(prev => prev.map(t => t.id === s.team ? { ...t, channels: [...t.channels, newChan] } : t))
-    setS(prev => ({ ...prev, channel: name, rail: 'teams', tab: 'posts', modal: 'invite', newName: '', newDesc: '' }))
-    if (orgName && s.team) {
-      window.weave?.teams?.createChannel?.({ orgName, teamId: s.team, channel: newChan }).catch(() => {})
+
+    // If no team is selected yet, auto-create a default "General" team
+    let teamId = s.team
+    if (!teamId || !teams.find(t => t.id === teamId)) {
+      const colors = ['#e8d5ff','#d0f0ff','#d0ffe4','#ffe9d0','#ffd0d0']
+      const idx = teams.length % colors.length
+      const tint = colors[idx]
+      const newTeam = {
+        id: 'general',
+        name: 'General',
+        initials: 'GE',
+        tint,
+        ink: '#201e1d',
+        members: 1,
+        channels: [],
+      }
+      teamId = newTeam.id
+      setTeams(prev => {
+        if (prev.find(t => t.id === teamId)) return prev
+        return [...prev, { ...newTeam, channels: [newChan] }]
+      })
+      setS(prev => ({ ...prev, team: teamId, channel: name, rail: 'teams', tab: 'posts', modal: 'invite', newName: '', newDesc: '' }))
+      if (orgName) {
+        window.weave?.teams?.createTeam?.({ orgName, team: { ...newTeam, channels: [newChan] } }).catch(() => {})
+      }
+    } else {
+      setTeams(prev => prev.map(t => t.id === teamId ? { ...t, channels: [...t.channels, newChan] } : t))
+      setS(prev => ({ ...prev, channel: name, rail: 'teams', tab: 'posts', modal: 'invite', newName: '', newDesc: '' }))
+      if (orgName) {
+        window.weave?.teams?.createChannel?.({ orgName, teamId, channel: newChan }).catch(() => {})
+      }
     }
+    // Immediately create a channel key for just the admin so they can post right away
+    if (orgName && identity?.handle) {
+      const myHandle = identity.handle
+      window.weave?.resolve?.(myHandle)
+        .then(meta => {
+          if (!meta) return
+          const noisePub = Buffer.from((meta as { noisePub: Uint8Array }).noisePub).toString('hex')
+          window.weave?.arkiv?.rotateChannelKey?.({ org: orgName, channel: name, members: [{ label: myHandle, noisePub }] }).catch(() => {})
+        })
+        .catch(() => {})
+    }
+
     say('#' + name + ' created · add members to start gossiping history')
   }
 
@@ -402,6 +441,24 @@ export default function WeaveApp() {
     Promise.allSettled(
       handles.map(h => window.weave?.arkiv?.addChannelMember?.({ org, channel, member: h, role }))
     ).catch(() => {})
+
+    // Generate/rotate channel key and distribute to all members (including self)
+    if (!isGuest) {
+      const myHandle = identity?.handle ?? ''
+      const allHandles = [myHandle, ...handles].filter(Boolean)
+      Promise.allSettled(allHandles.map(h => window.weave?.resolve?.(h)))
+        .then(results => {
+          const members = results
+            .map((r, i) => r.status === 'fulfilled' && r.value
+              ? { label: allHandles[i], noisePub: Buffer.from((r.value as { noisePub: Uint8Array }).noisePub).toString('hex') }
+              : null)
+            .filter(Boolean) as { label: string; noisePub: string }[]
+          if (members.length > 0) {
+            window.weave?.arkiv?.rotateChannelKey?.({ org, channel, members }).catch(() => {})
+          }
+        })
+        .catch(() => {})
+    }
     // For Guest role, resolve each handle and mint an expiring ERC-1155 token on-chain
     if (isGuest) {
       handles.forEach(async (h) => {
