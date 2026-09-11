@@ -14,7 +14,7 @@ function Spinner() {
       display: 'inline-block',
       width: 18,
       height: 18,
-      border: '2px solid rgba(255,255,255,.2)',
+      border: '2px solid rgba(32,30,29,.15)',
       borderTopColor: '#0088b0',
       borderRadius: '50%',
       animation: 'spin 0.7s linear infinite',
@@ -34,17 +34,18 @@ function ErrorToast({ msg, onDismiss }: { msg: string; onDismiss: () => void }) 
       alignItems: 'center',
       gap: 10,
       padding: '11px 16px',
-      background: '#3b1a1a',
-      color: '#fca5a5',
-      borderRadius: 6,
-      boxShadow: '0 12px 32px rgba(0,0,0,.5)',
+      background: '#2d2b2b',
+      color: '#f8f4f4',
+      borderRadius: 2,
+      boxShadow: '0 12px 32px rgba(45,43,43,.28)',
       zIndex: 60,
       fontSize: 13.5,
       maxWidth: 480,
+      animation: 'wv-rise .16s ease-out',
     }}>
-      <i className="ph-duotone ph-warning" style={{ fontSize: 18, color: '#f87171' }} />
+      <i className="ph-duotone ph-warning" style={{ fontSize: 18, color: '#fbbf24' }} />
       <span style={{ flex: 1 }}>{msg}</span>
-      <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 16 }}>×</button>
+      <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: 'rgba(248,244,244,.6)', cursor: 'pointer', fontSize: 16 }}>×</button>
     </div>
   )
 }
@@ -125,26 +126,35 @@ export default function JoinOrgFlow({ onComplete, onBack }: Props) {
   const seedWords = parseSeedPhrase(seedRaw)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#111827', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: '#f3f2f2',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px 20px',
+      fontFamily: '"Source Serif 4", Georgia, serif',
+    }}>
       <div style={{ width: '100%', maxWidth: 520 }}>
         <button
           onClick={step === 'handle' ? onBack : () => setStep('handle')}
-          style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, marginBottom: 24, padding: 0 }}
+          style={{ background: 'none', border: 'none', color: 'rgba(32,30,29,.62)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, marginBottom: 24, padding: 0, fontFamily: 'inherit' }}
         >
           <i className="ph-duotone ph-arrow-left" style={{ fontSize: 14 }} /> Back
         </button>
 
-        <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Join Organization</div>
-        <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 32 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: '#201e1d', marginBottom: 6 }}>Join Organization</div>
+        <div style={{ fontSize: 14, color: 'rgba(32,30,29,.68)', marginBottom: 32 }}>
           {step === 'handle' && 'Enter your Weave ENS handle assigned by your org admin.'}
           {step === 'seed' && 'Enter the 12-word seed phrase associated with your identity.'}
           {step === 'logging-in' && 'Verifying your identity…'}
         </div>
 
-        <div style={{ background: '#1f2937', border: '1px solid rgba(255,255,255,.07)', borderRadius: 8, padding: '28px 24px' }}>
+        <div style={{ background: '#fff', border: '1px solid rgba(32,30,29,.1)', borderRadius: 2, padding: '26px 22px' }}>
           {step === 'handle' && (
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: 'rgba(32,30,29,.62)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 7 }}>
                 ENS Handle
               </label>
               <input
@@ -154,21 +164,22 @@ export default function JoinOrgFlow({ onComplete, onBack }: Props) {
                 onKeyDown={e => { if (e.key === 'Enter') handleHandleNext() }}
                 placeholder="e.g. philo.google.weave.eth"
                 style={{
-                  width: '100%', padding: '10px 12px', background: '#111827',
-                  border: `1px solid ${handleError ? '#ef4444' : 'rgba(255,255,255,.12)'}`,
-                  borderRadius: 6, color: '#fff', fontSize: 15, fontFamily: 'inherit', outline: 'none', marginBottom: 4,
+                  width: '100%', padding: '9px 11px', background: '#eae9e9',
+                  border: `1px solid ${handleError ? '#aa0b56' : 'rgba(32,30,29,.14)'}`,
+                  borderRadius: 2, color: '#201e1d', fontSize: 15, fontFamily: 'inherit', outline: 'none', marginBottom: 4,
+                  boxSizing: 'border-box',
                 }}
               />
-              {handleError && <div style={{ color: '#f87171', fontSize: 13, marginBottom: 8 }}>{handleError}</div>}
+              {handleError && <div style={{ color: '#aa0b56', fontSize: 13, marginBottom: 8 }}>{handleError}</div>}
               {!handleError && handle && (
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 16 }}>
-                  Resolving as <span style={{ color: '#0088b0', fontFamily: 'ui-monospace,Menlo,monospace' }}>{normalizeHandle(handle)}</span>
+                <div style={{ fontSize: 12, color: 'rgba(32,30,29,.55)', marginBottom: 16 }}>
+                  Resolving as <span style={{ color: '#006786', fontFamily: 'ui-monospace,Menlo,monospace' }}>{normalizeHandle(handle)}</span>
                 </div>
               )}
               {!handle && <div style={{ marginBottom: 16 }} />}
               <button
                 onClick={handleHandleNext}
-                style={{ width: '100%', padding: '11px', background: '#0088b0', border: 'none', borderRadius: 6, color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+                style={{ width: '100%', padding: '10px', background: '#0088b0', border: 'none', borderRadius: 2, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Continue
               </button>
@@ -177,13 +188,13 @@ export default function JoinOrgFlow({ onComplete, onBack }: Props) {
 
           {step === 'seed' && (
             <div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Signing in as</div>
-                <div style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 14, color: '#0088b0' }}>{normalizeHandle(handle)}</div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11.5, color: 'rgba(32,30,29,.62)', marginBottom: 4 }}>Signing in as</div>
+                <div style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 13.5, color: '#006786' }}>{normalizeHandle(handle)}</div>
               </div>
 
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                Seed phrase <span style={{ color: '#6b7280', fontWeight: 400, textTransform: 'none' }}>({seedWords.length}/12 words)</span>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: 'rgba(32,30,29,.62)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 7 }}>
+                Seed phrase <span style={{ color: 'rgba(32,30,29,.45)', fontWeight: 400, textTransform: 'none' }}>({seedWords.length}/12 words)</span>
               </label>
               <textarea
                 autoFocus
@@ -192,20 +203,21 @@ export default function JoinOrgFlow({ onComplete, onBack }: Props) {
                 placeholder="Enter your 12 words separated by spaces"
                 rows={4}
                 style={{
-                  width: '100%', padding: '10px 12px', background: '#111827',
-                  border: `1px solid ${seedError ? '#ef4444' : 'rgba(255,255,255,.12)'}`,
-                  borderRadius: 6, color: '#fff', fontSize: 14, fontFamily: 'ui-monospace,Menlo,monospace',
+                  width: '100%', padding: '9px 11px', background: '#eae9e9',
+                  border: `1px solid ${seedError ? '#aa0b56' : 'rgba(32,30,29,.14)'}`,
+                  borderRadius: 2, color: '#201e1d', fontSize: 14, fontFamily: 'ui-monospace,Menlo,monospace',
                   outline: 'none', resize: 'none', lineHeight: 1.6, marginBottom: 4,
+                  boxSizing: 'border-box',
                 }}
               />
-              {seedError && <div style={{ color: '#f87171', fontSize: 13, marginBottom: 8 }}>{seedError}</div>}
+              {seedError && <div style={{ color: '#aa0b56', fontSize: 13, marginBottom: 8 }}>{seedError}</div>}
 
               {seedWords.length === 12 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 16 }}>
                   {seedWords.map((word, i) => (
-                    <div key={i} style={{ background: '#111827', border: '1px solid rgba(255,255,255,.08)', borderRadius: 5, padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ fontSize: 10, color: '#4b5563', fontFamily: 'ui-monospace,Menlo,monospace', minWidth: 14, textAlign: 'right' }}>{i + 1}</span>
-                      <span style={{ fontSize: 13, color: '#d1d5db', fontFamily: 'ui-monospace,Menlo,monospace' }}>{word}</span>
+                    <div key={i} style={{ background: '#f3f2f2', border: '1px solid rgba(32,30,29,.1)', borderRadius: 2, padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ fontSize: 10, color: 'rgba(32,30,29,.45)', fontFamily: 'ui-monospace,Menlo,monospace', minWidth: 14, textAlign: 'right' }}>{i + 1}</span>
+                      <span style={{ fontSize: 13, color: '#201e1d', fontFamily: 'ui-monospace,Menlo,monospace' }}>{word}</span>
                     </div>
                   ))}
                 </div>
@@ -217,10 +229,14 @@ export default function JoinOrgFlow({ onComplete, onBack }: Props) {
                 onClick={handleLogin}
                 disabled={loading || seedWords.length !== 12}
                 style={{
-                  width: '100%', padding: '11px', background: seedWords.length === 12 ? '#0088b0' : '#374151',
-                  border: 'none', borderRadius: 6, color: '#fff', fontSize: 15, fontWeight: 600,
+                  width: '100%', padding: '10px',
+                  background: seedWords.length === 12 ? '#0088b0' : 'rgba(32,30,29,.1)',
+                  border: 'none', borderRadius: 2,
+                  color: seedWords.length === 12 ? '#fff' : 'rgba(32,30,29,.4)',
+                  fontSize: 14, fontWeight: 600,
                   cursor: seedWords.length === 12 ? 'pointer' : 'not-allowed',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  fontFamily: 'inherit',
                 }}
               >
                 {loading ? <><Spinner /> Verifying…</> : 'Sign in'}
@@ -231,7 +247,7 @@ export default function JoinOrgFlow({ onComplete, onBack }: Props) {
           {step === 'logging-in' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '32px 0' }}>
               <Spinner />
-              <div style={{ fontSize: 15, color: '#9ca3af' }}>Resolving identity on ENSv2…</div>
+              <div style={{ fontSize: 14, color: 'rgba(32,30,29,.68)' }}>Resolving identity on ENSv2…</div>
             </div>
           )}
         </div>

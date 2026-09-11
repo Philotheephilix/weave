@@ -56,6 +56,7 @@ declare global {
       identity: {
         get: () => Promise<WeaveIdentityInfo>
         generateSeed: () => Promise<{ seedPhrase: string[] }>
+        deriveAddress: (seedPhrase: string[]) => Promise<{ ethAddress: string; error?: string }>
         save: (data: any) => Promise<{ success: boolean }>
         load: () => Promise<{ handle: string } | null>
         login: (args: { handle: string; seedPhrase: string[] }) => Promise<LoginResult>

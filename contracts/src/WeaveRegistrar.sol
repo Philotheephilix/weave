@@ -23,6 +23,7 @@ contract WeaveRegistrar {
     error NotOwner();
     error NotOrgAdmin();
     error OrgNotFound();
+    error OrgAlreadyExists();
 
     constructor(address _registry, address _resolver) {
         registry = WeavePermissionedRegistry(_registry);
@@ -50,6 +51,7 @@ contract WeaveRegistrar {
     ) external {
         // Org subname: orgLabel (e.g. "google")
         bytes32 orgLh = keccak256(bytes(orgLabel));
+        if (orgAdmins[orgLh] != address(0)) revert OrgAlreadyExists();
         registry.registerMember(orgLabel, adminAddr);
         resolver.setIdentity(orgLh, adminIdentity);
 

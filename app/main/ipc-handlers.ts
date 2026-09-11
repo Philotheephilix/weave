@@ -1,4 +1,4 @@
-import { ipcMain, app } from 'electron'
+import { ipcMain, app, safeStorage } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { randomBytes } from '@noble/hashes/utils'
@@ -106,23 +106,42 @@ const REGISTRAR_ABI = [
 ] as const
 
 function generateSeedPhrase(): string[] {
-  const bytes = randomBytes(32)
+  const bytes = randomBytes(16) // 128 bits of entropy
+  const n = BigInt('0x' + Buffer.from(bytes).toString('hex'))
   return Array.from({ length: 12 }, (_, i) => {
-    const offset = i * 2
-    const idx = ((bytes[offset] << 3) | (bytes[offset + 1] >> 5)) % 2048
-    return BIP39_WORDS[idx]
+    const shift = BigInt(128 - 11 * (i + 1))
+    return BIP39_WORDS[Number((n >> shift) & 0x7FFn)]
   })
 }
 
-function saveIdentity(data: object): void {
-  const fpath = path.join(app.getPath('userData'), 'weave-identity.json')
-  fs.writeFileSync(fpath, JSON.stringify(data, null, 2))
+const IDENTITY_PATH = () => path.join(app.getPath('userData'), 'weave-identity.json')
+const SEED_PATH = () => path.join(app.getPath('userData'), 'weave-seed.bin')
+
+function saveIdentity(data: Record<string, unknown>): void {
+  // Separate the seed phrase — store it encrypted in Keychain via safeStorage
+  const { seedPhrase, ...rest } = data
+  if (seedPhrase && safeStorage.isEncryptionAvailable()) {
+    const enc = safeStorage.encryptString((seedPhrase as string[]).join(' '))
+    fs.writeFileSync(SEED_PATH(), enc)
+  }
+  fs.writeFileSync(IDENTITY_PATH(), JSON.stringify(rest, null, 2))
 }
 
-function loadIdentity(): object | null {
-  const fpath = path.join(app.getPath('userData'), 'weave-identity.json')
+function loadIdentity(): Record<string, unknown> | null {
+  const fpath = IDENTITY_PATH()
   if (!fs.existsSync(fpath)) return null
-  return JSON.parse(fs.readFileSync(fpath, 'utf8'))
+  const meta = JSON.parse(fs.readFileSync(fpath, 'utf8')) as Record<string, unknown>
+  // Re-attach seed phrase from Keychain if available
+  const seedPath = SEED_PATH()
+  if (fs.existsSync(seedPath) && safeStorage.isEncryptionAvailable()) {
+    try {
+      const decrypted = safeStorage.decryptString(fs.readFileSync(seedPath))
+      meta.seedPhrase = decrypted.split(' ')
+    } catch {
+      // Keychain denied or corrupt — seed not available
+    }
+  }
+  return meta
 }
 
 export function registerIpcHandlers(
@@ -178,12 +197,21 @@ export function registerIpcHandlers(
     return { seedPhrase: generateSeedPhrase() }
   })
 
+  ipcMain.handle('weave:identity:derive-address', (_e, seedPhrase: string[]) => {
+    try {
+      const { ethAddress } = deriveKeysFromSeed(seedPhrase)
+      return { ethAddress }
+    } catch {
+      return { error: 'Failed to derive address' }
+    }
+  })
+
   ipcMain.handle('weave:identity:save', (_e, data: { handle: string, seedPhrase: string[], keys: object }) => {
     try {
       saveIdentity(data)
       return { success: true }
-    } catch (err) {
-      return { success: false }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
     }
   })
 
@@ -215,12 +243,10 @@ export function registerIpcHandlers(
         functionName: 'registerOrg',
         args: [orgName, ethAddress, weaveIdentityArg],
       })
-      // Wait for receipt
       const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
       await pubClient.waitForTransactionReceipt({ hash: txHash })
       const ensName = `${orgName}.weave.eth`
       const adminEns = `admin.${orgName}.weave.eth`
-      // Save identity locally
       saveIdentity({ handle: adminEns, seedPhrase, ethAddress, keys: {
         viewPub: Buffer.from(orgIdentity.viewPub).toString('hex'),
         spendPub: Buffer.from(orgIdentity.spendPub).toString('hex'),
@@ -235,27 +261,30 @@ export function registerIpcHandlers(
 
   ipcMain.handle('weave:member:enroll', async (_e, { orgName, memberName, memberAddress, memberSeedPhrase }: { orgName: string, memberName: string, memberAddress: string, memberSeedPhrase?: string[] }) => {
     try {
-      // Admin must be logged in — load saved identity to get admin seed
       const saved = loadIdentity() as Record<string, unknown> | null
-      if (!saved || !saved.handle || !(saved.handle as string).startsWith('admin.')) {
+      const savedHandle = saved?.handle as string | undefined
+      const savedOrgName = savedHandle?.startsWith('admin.') ? savedHandle.split('.')[1] : null
+      if (!saved || !savedOrgName) {
         return { error: 'Must be logged in as org admin to enroll members' }
+      }
+      if (savedOrgName !== orgName) {
+        return { error: `Logged-in admin is for org "${savedOrgName}", not "${orgName}"` }
       }
       const adminSeed = saved.seedPhrase as string[]
       const { ethPrivKey } = deriveKeysFromSeed(adminSeed)
       const account = privateKeyToAccount(ethPrivKey)
       const walletClient = createWalletClient({ account, chain: sepolia, transport: http(SEPOLIA_RPC) })
-      // Derive member identity from their seed (if provided) or create placeholder
+      const toHex = (b: Uint8Array): `0x${string}` => `0x${Buffer.from(b).toString('hex')}`
       type ViemIdentityArg = {
         stealthViewKey: `0x${string}`; stealthSpendKey: `0x${string}`; x25519Pubkey: `0x${string}`;
         onionAddress: `0x${string}`; nostrPubkey: `0x${string}`; registeredAt: bigint
       }
-      const toHex2 = (b: Uint8Array): `0x${string}` => `0x${Buffer.from(b).toString('hex')}`
       let memberIdentityArg: ViemIdentityArg
       if (memberSeedPhrase && memberSeedPhrase.length === 12) {
         const { identity: mi } = deriveKeysFromSeed(memberSeedPhrase)
         memberIdentityArg = {
-          stealthViewKey: toHex2(mi.viewPub), stealthSpendKey: toHex2(mi.spendPub),
-          x25519Pubkey: toHex2(mi.noisePub),
+          stealthViewKey: toHex(mi.viewPub), stealthSpendKey: toHex(mi.spendPub),
+          x25519Pubkey: toHex(mi.noisePub),
           onionAddress: '0x' as `0x${string}`, nostrPubkey: `0x${'00'.repeat(32)}` as `0x${string}`,
           registeredAt: BigInt(Math.floor(Date.now() / 1000)),
         }
@@ -286,7 +315,6 @@ export function registerIpcHandlers(
 
   ipcMain.handle('weave:member:list', async (_e, orgName: string) => {
     try {
-      // Query registry SubnameRegistered events for the org prefix
       const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
       const events = await pubClient.getLogs({
         address: ADDRESSES.WeavePermissionedRegistry,
@@ -301,15 +329,12 @@ export function registerIpcHandlers(
         } as const,
         fromBlock: 0n,
       })
-      // Filter for labels matching `*.orgName` pattern (check on-chain record)
       const members: Array<{ name: string; address: string }> = []
       for (const ev of events) {
         const owner = ev.args.owner_ as string | undefined
         if (!owner) continue
-        // We store label hash but not the label string on-chain — use ENS reverse lookup not available here
-        // Return raw address list; client can resolve ENS names from these addresses
         const addr = owner.toLowerCase()
-        if (!members.find(m => m.address === addr)) {
+        if (!members.some(m => m.address === addr)) {
           members.push({ name: `member.${orgName}.weave.eth`, address: addr })
         }
       }
@@ -323,20 +348,25 @@ export function registerIpcHandlers(
     try {
       const resolved = await idMgr.resolveHandle(handle)
       if (!resolved) {
-        return { success: false, error: "Handle not enrolled or keys don't match" }
+        return { success: false, error: "Handle not found on-chain" }
       }
-      // Derive a simple key fingerprint from the seed phrase to compare
-      const derivedSeed = seedPhrase.join(' ')
-      const savedIdentity = loadIdentity() as Record<string, unknown> | null
-      if (savedIdentity && savedIdentity.handle === handle && savedIdentity.seedPhrase) {
-        const savedPhrase = (savedIdentity.seedPhrase as string[]).join(' ')
-        if (savedPhrase !== derivedSeed) {
-          return { success: false, error: "Handle not enrolled or keys don't match" }
-        }
+      const { identity: derived } = deriveKeysFromSeed(seedPhrase)
+      const derivedViewPub = Buffer.from(derived.viewPub).toString('hex')
+      const resolvedViewPub = Buffer.from(resolved.viewPub).toString('hex')
+      if (derivedViewPub !== resolvedViewPub) {
+        return { success: false, error: "Seed phrase does not match enrolled identity" }
       }
-      const loginData = { handle, seedPhrase, keys: resolved }
+      const loginData = {
+        handle,
+        seedPhrase,
+        keys: {
+          viewPub:  Buffer.from(derived.viewPub).toString('hex'),
+          spendPub: Buffer.from(derived.spendPub).toString('hex'),
+          noisePub: Buffer.from(derived.noisePub).toString('hex'),
+        },
+      }
       saveIdentity(loginData)
-      return { success: true, identity: resolved }
+      return { success: true, identity: loginData }
     } catch {
       return { success: false, error: "Handle not enrolled or keys don't match" }
     }

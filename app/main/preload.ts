@@ -2,11 +2,12 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('weave', {
   identity: {
-    get:          () => ipcRenderer.invoke('weave:identity:get'),
-    generateSeed: () => ipcRenderer.invoke('weave:identity:generate-seed'),
-    save:         (data: any) => ipcRenderer.invoke('weave:identity:save', data),
-    load:         () => ipcRenderer.invoke('weave:identity:load'),
-    login:        (data: any) => ipcRenderer.invoke('weave:identity:login', data),
+    get:           () => ipcRenderer.invoke('weave:identity:get'),
+    generateSeed:  () => ipcRenderer.invoke('weave:identity:generate-seed'),
+    deriveAddress: (seedPhrase: string[]) => ipcRenderer.invoke('weave:identity:derive-address', seedPhrase),
+    save:          (data: any) => ipcRenderer.invoke('weave:identity:save', data),
+    load:          () => ipcRenderer.invoke('weave:identity:load'),
+    login:         (data: any) => ipcRenderer.invoke('weave:identity:login', data),
   },
   org: {
     create:      (data: any) => ipcRenderer.invoke('weave:org:create', data),

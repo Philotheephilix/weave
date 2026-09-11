@@ -2,21 +2,14 @@
 import { useState, useEffect } from 'react'
 import type { OrgMember } from '@/lib/ipc'
 
-// OrgAdminPanel.tsx
-// Shows enrolled members and allows enrolling new ones
-// Only visible to admin.orgname.weave.eth accounts
-
 export interface OrgAdminPanelProps {
-  adminHandle: string  // e.g. "admin.google.weave.eth"
+  adminHandle: string
   onClose: () => void
 }
 
-// OrgMember is imported from ipc.ts: { name: string; address: string }
-
 export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelProps) {
-  // "admin.google.weave.eth" → orgName = "google"
   const parts = adminHandle.split('.')
-  const orgName = parts[1]  // index 1 between "admin" and "weave"
+  const orgName = parts.length >= 4 && parts[0] === 'admin' ? parts[1] : null
 
   const [members, setMembers] = useState<OrgMember[]>([])
   const [loadingMembers, setLoadingMembers] = useState(true)
@@ -28,6 +21,7 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!orgName) { setLoadingMembers(false); return }
     setLoadingMembers(true)
     window.weave?.org?.listMembers(orgName)
       .then(list => setMembers(list))
@@ -38,7 +32,7 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
   const handleEnroll = async () => {
     const name = memberName.trim()
     const address = memberAddress.trim()
-    if (!name || !address) return
+    if (!name || !address || !orgName) return
 
     setEnrolling(true)
     setSuccessMsg(null)
@@ -49,21 +43,21 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
       if (result?.error) {
         setErrorMsg(result.error)
       } else {
-        const fullHandle = `${name}.${orgName}.weave.eth`
-        setSuccessMsg(`${fullHandle} enrolled successfully`)
+        setSuccessMsg(`${name}.${orgName}.weave.eth enrolled successfully`)
         setMemberName('')
         setMemberAddress('')
-        // Refresh member list
         window.weave?.org?.listMembers(orgName)
           .then(list => setMembers(list))
           .catch(() => {})
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message ?? 'Enrollment failed')
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Enrollment failed')
     } finally {
       setEnrolling(false)
     }
   }
+
+  const canEnroll = !enrolling && memberName.trim().length > 0 && memberAddress.trim().length > 0
 
   const truncateAddress = (addr: string) =>
     addr.length > 14 ? addr.slice(0, 6) + '…' + addr.slice(-4) : addr
@@ -94,7 +88,6 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
           boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
         }}
       >
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Org Admin Panel</h2>
@@ -118,7 +111,6 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
           </button>
         </div>
 
-        {/* Section 1: Enrolled Members */}
         <section style={{ marginBottom: 24 }}>
           <h3 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: '#6b7280' }}>
             Enrolled Members
@@ -243,17 +235,17 @@ export default function OrgAdminPanel({ adminHandle, onClose }: OrgAdminPanelPro
 
             <button
               onClick={handleEnroll}
-              disabled={enrolling || !memberName.trim() || !memberAddress.trim()}
+              disabled={!canEnroll}
               style={{
                 alignSelf: 'flex-start',
                 padding: '9px 20px',
-                background: enrolling || !memberName.trim() || !memberAddress.trim() ? '#374151' : '#0088b0',
-                color: enrolling || !memberName.trim() || !memberAddress.trim() ? '#6b7280' : '#fff',
+                background: canEnroll ? '#0088b0' : '#374151',
+                color: canEnroll ? '#fff' : '#6b7280',
                 border: 'none',
                 borderRadius: 8,
                 fontSize: 13.5,
                 fontWeight: 600,
-                cursor: enrolling || !memberName.trim() || !memberAddress.trim() ? 'not-allowed' : 'pointer',
+                cursor: canEnroll ? 'pointer' : 'not-allowed',
                 transition: 'background .15s',
               }}
             >
