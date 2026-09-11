@@ -20,6 +20,7 @@ import MembersModal from '@/components/modals/MembersModal'
 import NewDMModal from '@/components/modals/NewDMModal'
 import SearchPalette from '@/components/modals/SearchPalette'
 import OrgAdminPanel from '@/components/admin/OrgAdminPanel'
+import { ipcPeerReachable } from '@/lib/ipc'
 
 const initialState: AppState = {
   rail: 'teams',
@@ -343,7 +344,18 @@ export default function WeaveApp() {
   const ring = (id: string, kind: string) => {
     activePeerLabelRef.current = id
     setS(prev => ({ ...prev, call: { state: 'ringing', with: id, title: id + ' · ' + kind, base: 0, people: ['me', id] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: kind === 'video' }))
-    rtc.startCall(id).catch(() => {})
+    // Gate call initiation on Tor reachability — calls only work over Tor
+    ipcPeerReachable(id).then(({ reachable }) => {
+      if (!reachable) {
+        say(`${id} is not reachable over Tor · call unavailable`)
+        setS(prev => ({ ...prev, call: { state: 'idle', title: '', base: 0, people: [] } }))
+        return
+      }
+      rtc.startCall(id).catch(() => {})
+    }).catch(() => {
+      say('Tor connectivity check failed · call unavailable')
+      setS(prev => ({ ...prev, call: { state: 'idle', title: '', base: 0, people: [] } }))
+    })
   }
 
   const toggleShare = () => {

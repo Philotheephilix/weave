@@ -7,13 +7,15 @@ import { NostrDelivery } from './nostr-delivery.js'
 import { IdentityManager, createIdentity } from './identity-manager.js'
 import { registerIpcHandlers, loadIdentity, deriveKeysFromSeed } from './ipc-handlers.js'
 import { ArkivManager } from './arkiv-manager.js'
+import { OnionListener } from './onion-listener.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const tor   = new TorManager()
-const dht   = new DHTDiscovery()
-const nostr = new NostrDelivery()
-const idMgr = new IdentityManager()
+const tor          = new TorManager()
+const dht          = new DHTDiscovery()
+const nostr        = new NostrDelivery()
+const idMgr        = new IdentityManager()
+const onionListener = new OnionListener()
 
 async function bootstrap(): Promise<void> {
   await app.whenReady()
@@ -34,7 +36,10 @@ async function bootstrap(): Promise<void> {
   // Tor and DHT startup is best-effort — window must open even if they fail
   await Promise.allSettled([tor.start(), dht.start()])
 
-  tor.createOnionService(3000).then(onion => {
+  // Port 3001 = DM/signal HTTP listener (Tor routes .onion:80 → here)
+  // Port 3000 = renderer dev server (only in dev, mapped separately)
+  const ONION_PORT = 3001
+  tor.createOnionService(ONION_PORT).then(async onion => {
     dht.announce(identity.viewPriv, identity.viewPub, onion.onionAddress)
   }).catch(() => {})
 
@@ -57,7 +62,7 @@ async function bootstrap(): Promise<void> {
     },
   })
 
-  registerIpcHandlers(tor, dht, nostr, idMgr, identityRef, win, arkivRef)
+  registerIpcHandlers(tor, dht, nostr, idMgr, identityRef, win, arkivRef, onionListener)
 
   await win.loadFile(path.join(__dirname, '..', '..', 'renderer', 'out', 'index.html'))
 
@@ -66,6 +71,7 @@ async function bootstrap(): Promise<void> {
   })
 
   app.on('before-quit', () => {
+    onionListener.stop()
     tor.stop()
     dht.stop()
     nostr.close()

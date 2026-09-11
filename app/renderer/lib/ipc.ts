@@ -99,14 +99,25 @@ declare global {
       stealth: {
         compute: (viewPubHex: string, spendPubHex: string) => Promise<StealthResult>
       }
+      peer: {
+        reachable: (args: { peerLabel: string }) => Promise<{ reachable: boolean; onionAddress?: string }>
+      }
       chat: {
         sendDM(args: {
           org: string; peerLabel: string; text: string
         }): Promise<{ ok: boolean; via: 'tor' | 'nostr' | 'arkiv-only' }>
       }
       call: {
+        goOnline(): Promise<void>
+        initiate(args: { onionAddr: string }): Promise<void>
+        hangUp(): Promise<void>
+        getState(): Promise<unknown>
         signal(args: { recipientLabel: string; signal: object }): Promise<void>
         onSignal(cb: (payload: { from: string; signal: object }) => void): () => void
+        onAudioFrame(cb: (data: ArrayBuffer) => void): () => void
+        sendAudioFrame(data: ArrayBuffer): void
+        onConnected(cb: (info: { direction: string; onionAddr?: string }) => void): () => void
+        onError(cb: (err: { message: string }) => void): () => void
       }
       teams: {
         load(orgName: string): Promise<StoredTeam[]>
@@ -185,6 +196,10 @@ export async function ipcTorProxy(): Promise<TorProxy> {
 
 export async function ipcComputeStealth(viewPubHex: string, spendPubHex: string): Promise<StealthResult> {
   return window.weave.stealth.compute(viewPubHex, spendPubHex)
+}
+
+export async function ipcPeerReachable(peerLabel: string): Promise<{ reachable: boolean; onionAddress?: string }> {
+  return window.weave.peer.reachable({ peerLabel })
 }
 
 export async function ipcCallSignal(args: { recipientLabel: string; signal: object }): Promise<void> {

@@ -112,6 +112,21 @@ export class TorManager {
     return { onionAddress: `${match[1]}.onion`, port: localPort }
   }
 
+  async createOnionServiceWithPort(externalPort: number, localPort: number): Promise<{ onionAddress: string; serviceId: string }> {
+    if (!this.ready) throw new Error('TorManager not started')
+    const reply = await this._controlCmd(
+      `ADD_ONION NEW:ED25519-V3 Flags=DiscardPK Port=${externalPort},127.0.0.1:${localPort}`
+    )
+    const match = reply.match(/ServiceID=([a-z2-7]{56})/)
+    if (!match) throw new Error(`Failed to create onion service: ${reply}`)
+    return { onionAddress: `${match[1]}.onion`, serviceId: match[1] }
+  }
+
+  async removeOnion(serviceId: string): Promise<void> {
+    if (!this.ready) return
+    try { await this._controlCmd(`DEL_ONION ${serviceId}`) } catch { /* ignore */ }
+  }
+
   getSocksProxy(): { host: string; port: number } {
     return { host: '127.0.0.1', port: 9050 }
   }

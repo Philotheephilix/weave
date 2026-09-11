@@ -30,12 +30,39 @@ contextBridge.exposeInMainWorld('weave', {
     compute: (viewPub: string, spendPub: string) =>
       ipcRenderer.invoke('weave:stealth:compute', viewPub, spendPub),
   },
+  peer: {
+    reachable: (args: object) => ipcRenderer.invoke('weave:peer:reachable', args),
+  },
   call: {
+    // Tor Noise_XX call orchestration
+    goOnline:  () => ipcRenderer.invoke('call:go-online'),
+    initiate:  (args: { onionAddr: string }) => ipcRenderer.invoke('call:initiate', args),
+    hangUp:    () => ipcRenderer.invoke('call:hang-up'),
+    getState:  () => ipcRenderer.invoke('call:current-state'),
+    // Nostr-based call signaling (used to publish caller's onion address to callee)
     signal: (args: object) => ipcRenderer.invoke('weave:call:signal', args),
     onSignal: (cb: (payload: { from: string; signal: object }) => void) => {
       const handler = (_e: Electron.IpcRendererEvent, payload: { from: string; signal: object }) => cb(payload)
       ipcRenderer.on('weave:call:signal', handler)
       return () => ipcRenderer.removeListener('weave:call:signal', handler)
+    },
+    // Audio frames (raw PCM Int16 over Noise_XX transport)
+    onAudioFrame: (cb: (data: ArrayBuffer) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: ArrayBuffer) => cb(data)
+      ipcRenderer.on('audio:inbound-frame', handler)
+      return () => ipcRenderer.removeListener('audio:inbound-frame', handler)
+    },
+    sendAudioFrame: (data: ArrayBuffer) => ipcRenderer.send('audio:outbound-frame', data),
+    // Call state events
+    onConnected: (cb: (info: { direction: string; onionAddr?: string }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, info: { direction: string; onionAddr?: string }) => cb(info)
+      ipcRenderer.on('call:connected', handler)
+      return () => ipcRenderer.removeListener('call:connected', handler)
+    },
+    onError: (cb: (err: { message: string }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, err: { message: string }) => cb(err)
+      ipcRenderer.on('call:error', handler)
+      return () => ipcRenderer.removeListener('call:error', handler)
     },
   },
   arkiv: {

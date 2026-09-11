@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import type { DMMessage } from '@/lib/types'
 import { ensLabel, ensInitials, ensTint } from '@/lib/ens-display'
+import { ipcPeerReachable } from '@/lib/ipc'
 import MessageComposer from './MessageComposer'
 
 interface DMViewProps {
@@ -34,11 +35,21 @@ export default function DMView({ dmId, messages, draft, onDraft, onSend, onStart
     window.weave?.resolve(dmId).then((meta) => {
       if (cancelled || !meta) return
       if (meta.noisePub && meta.noisePub.length > 0) {
-        // Derive a short display fingerprint from the resolved Noise public key
         const hex = Array.from(meta.noisePub).map((b: number) => b.toString(16).padStart(2, '0')).join('')
         setFingerprint(`${hex.slice(0, 4)}…${hex.slice(-4)}`)
       }
     }).catch(() => { /* peer not yet resolvable */ })
+    // Probe Tor reachability (8s timeout inside IPC handler)
+    ipcPeerReachable(dmId).then(({ reachable }) => {
+      if (cancelled) return
+      if (reachable) {
+        setPresenceColor('#4caf50')
+        setDmStatus('Online via Tor')
+      } else {
+        setPresenceColor('#9b9797')
+        setDmStatus('Direct message')
+      }
+    }).catch(() => { /* Tor not available */ })
     return () => { cancelled = true }
   }, [dmId])
 
