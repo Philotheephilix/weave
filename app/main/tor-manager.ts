@@ -3,6 +3,8 @@ import * as net from 'net'
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
+import { fileURLToPath } from 'url'
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export interface OnionService {
   onionAddress: string  // e.g. "abcdef1234567890.onion"

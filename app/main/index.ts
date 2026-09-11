@@ -1,10 +1,13 @@
 import { app, BrowserWindow } from 'electron'
 import * as path from 'path'
+import { fileURLToPath } from 'url'
 import { TorManager } from './tor-manager.js'
 import { DHTDiscovery } from './dht-discovery.js'
 import { NostrDelivery } from './nostr-delivery.js'
 import { IdentityManager, createIdentity } from './identity-manager.js'
 import { registerIpcHandlers } from './ipc-handlers.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const tor   = new TorManager()
 const dht   = new DHTDiscovery()
@@ -14,10 +17,13 @@ const identity = createIdentity()
 
 async function bootstrap(): Promise<void> {
   await app.whenReady()
-  await Promise.all([tor.start(), dht.start()])
 
-  const onion = await tor.createOnionService(3000)
-  dht.announce(identity.viewPriv, identity.viewPub, onion.onionAddress)
+  // Tor and DHT startup is best-effort — window must open even if they fail
+  await Promise.allSettled([tor.start(), dht.start()])
+
+  tor.createOnionService(3000).then(onion => {
+    dht.announce(identity.viewPriv, identity.viewPub, onion.onionAddress)
+  }).catch(() => {})
 
   registerIpcHandlers(tor, dht, nostr, idMgr, identity)
 
