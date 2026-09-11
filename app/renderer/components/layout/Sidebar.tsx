@@ -20,7 +20,7 @@ interface SidebarProps {
   dms: Record<string, DMMessage[]>
   callLog: CallLogEntry[]
   filesScope: string
-  activityScope: string
+  members: Array<{ name: string; address: string }>
   onToggleTeam: (id: string) => void
   onSelectChannel: (teamId: string, channelId: string) => void
   onSelectDM: (id: string) => void
@@ -30,7 +30,8 @@ interface SidebarProps {
   onOpenCreate: () => void
   onOpenPalette: () => void
   onSetFilesScope: (s: string) => void
-  onSetActivityScope: (s: string) => void
+  isAdmin: boolean
+  onEnrollMember: () => void
 }
 
 // Sub-components to keep hooks outside loops
@@ -157,17 +158,6 @@ function NavScopeItem({ id, label, icon, count, isActive, onClick }: { id: strin
   )
 }
 
-function ActivityNavItem({ id, label, icon, count, isActive, onClick }: { id: string; label: string; icon: string; count?: string; isActive: boolean; onClick: () => void }) {
-  const [hover, setHover] = useState(false)
-  return (
-    <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 2, textAlign: 'left', background: isActive ? '#e9f8ff' : hover ? 'rgba(32,30,29,.06)' : 'transparent', cursor: 'pointer', width: '100%' }}>
-      <i className={`ph-duotone ${icon}`} style={{ fontSize: 16, opacity: 0.85 }}></i>
-      <span style={{ flex: 1, fontSize: 13.5, fontWeight: isActive ? 600 : 400 }}>{label}</span>
-      {count && <span style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, color: '#aa0b56' }}>{count}</span>}
-    </button>
-  )
-}
 
 function HoverIconBtn({ icon, title, onClick, hoverBg, hoverColor }: { icon: string; title?: string; onClick?: () => void; hoverBg: string; hoverColor: string }) {
   const [hover, setHover] = useState(false)
@@ -188,17 +178,11 @@ const FILE_NAV = [
   { id: 'pinned',  label: 'Pinned',          icon: 'ph-push-pin',               count: '2'  },
 ]
 
-const ACTIVITY_NAV = [
-  { id: 'all',      label: 'All activity',  icon: 'ph-stack',     count: '4' },
-  { id: 'mentions', label: 'Mentions',      icon: 'ph-at',        count: '2' },
-  { id: 'invites',  label: 'Invites',       icon: 'ph-user-plus', count: '1' },
-  { id: 'calls',    label: 'Missed calls',  icon: 'ph-phone-x',   count: '1' },
-]
 
 export default function Sidebar(props: SidebarProps) {
-  const { rail, teams, teamOpen, activeTeam, activeChannel, activeDM, joinedVoice, voiceTeam, mic, dmOrder, dms, callLog, filesScope, activityScope } = props
+  const { rail, teams, teamOpen, activeTeam, activeChannel, activeDM, joinedVoice, voiceTeam, mic, dmOrder, dms, callLog, filesScope, members, isAdmin } = props
 
-  const titles: Record<RailId, string> = { teams: 'Teams', chat: 'Chat', calls: 'Calls', files: 'Files', activity: 'Activity', meet: 'Meet' }
+  const titles: Record<RailId, string> = { teams: 'Teams', chat: 'Chat', calls: 'Calls', files: 'Files', members: 'Members', meet: 'Meet' }
   const [micHover, setMicHover] = useState(false)
   const [leaveHover, setLeaveHover] = useState(false)
 
@@ -211,8 +195,8 @@ export default function Sidebar(props: SidebarProps) {
     <aside style={{ display: 'flex', flexDirection: 'column', minHeight: 0, background: '#f3f2f2', borderRight: '1px solid rgba(32,30,29,.1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 14px 8px' }}>
         <h4 style={{ margin: 0, fontSize: 17, fontWeight: 600, letterSpacing: '-.01em', flex: 1 }}>{titles[rail]}</h4>
-        <HoverIconBtn icon="ph-plus" title="New channel" onClick={props.onOpenCreate} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />
-        <HoverIconBtn icon="ph-funnel" title="Filter" onClick={props.onOpenPalette} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />
+        {rail !== 'members' && <HoverIconBtn icon="ph-plus" title="New channel" onClick={props.onOpenCreate} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />}
+        {rail !== 'members' && <HoverIconBtn icon="ph-funnel" title="Filter" onClick={props.onOpenPalette} hoverBg="rgba(32,30,29,.07)" hoverColor="#0088b0" />}
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 8px 12px' }}>
@@ -254,11 +238,34 @@ export default function Sidebar(props: SidebarProps) {
           </div>
         )}
 
-        {rail === 'activity' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {ACTIVITY_NAV.map(a => (
-              <ActivityNavItem key={a.id} {...a} isActive={activityScope === a.id} onClick={() => props.onSetActivityScope(a.id)} />
-            ))}
+        {rail === 'members' && (
+          <div>
+            {isAdmin && (
+              <button
+                onClick={props.onEnrollMember}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '8px 8px', marginBottom: 10, background: '#0088b0', border: 'none', borderRadius: 2, color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <i className="ph-duotone ph-user-plus" style={{ fontSize: 15 }} />
+                Enroll member
+              </button>
+            )}
+            {members.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'rgba(32,30,29,.5)', padding: '12px 8px' }}>No members enrolled yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {members.map((m, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 8px', borderRadius: 2 }}>
+                    <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, background: '#eae9e9', color: '#444141', fontSize: 11, fontWeight: 600, borderRadius: 2, flexShrink: 0 }}>
+                      {m.name.slice(0, 2).toUpperCase()}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+                      <span style={{ display: 'block', fontSize: 11, color: 'rgba(32,30,29,.55)', fontFamily: 'ui-monospace,Menlo,monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.address.slice(0, 10)}…</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

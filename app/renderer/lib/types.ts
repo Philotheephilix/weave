@@ -122,7 +122,7 @@ export interface CallTile {
   speakShow: string
 }
 
-export type RailId = 'activity' | 'chat' | 'teams' | 'calls' | 'files' | 'meet'
+export type RailId = 'members' | 'chat' | 'teams' | 'calls' | 'files' | 'meet'
 export type ModalId = 'create' | 'invite' | 'members' | null
 export type CallPanelId = 'people' | 'chat' | 'none'
 export type CallMode = 'grid' | 'present'

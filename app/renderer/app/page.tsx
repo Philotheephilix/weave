@@ -28,7 +28,7 @@ const initialState: AppState = {
   dm: '',
   tab: 'posts',
   filesScope: 'channel',
-  activityScope: 'all',
+  activityScope: 'all', // unused, kept for AppState compat
   msgs: {},
   dms: {},
   dmOrder: [],
@@ -85,6 +85,8 @@ export default function WeaveApp() {
   const [identity, setIdentity] = useState<{ handle: string } | null>(null)
   const [identityChecked, setIdentityChecked] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [orgMembers, setOrgMembers] = useState<Array<{ name: string; address: string }>>([])
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -108,6 +110,18 @@ export default function WeaveApp() {
     }).catch(() => {}).finally(() => setIdentityChecked(true))
     if (!window.weave?.identity?.load) setIdentityChecked(true)
   }, [])
+
+  // Load org members when switching to members rail
+  useEffect(() => {
+    if (s.rail !== 'members' || !identity?.handle) return
+    const orgName = identity.handle.includes('.')
+      ? identity.handle.split('.').slice(1, -2).join('.') // "admin.google.weave.eth" -> "google"
+      : ''
+    if (!orgName) return
+    window.weave?.org?.listMembers?.(orgName).then((list: Array<{ name: string; address: string }>) => {
+      setOrgMembers(list || [])
+    }).catch(() => {})
+  }, [s.rail, identity])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -311,21 +325,11 @@ export default function WeaveApp() {
           onMeetNow={() => startMeet('Meet now')}
           onOpenMembers={() => setS(prev => ({ ...prev, modal: 'members' }))}
         />
-        {identity?.handle?.startsWith('admin.') && (
-          <button
-            onClick={() => setShowAdminPanel(true)}
-            className="admin-btn"
-            title="Org Admin Panel"
-            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(32,30,29,.7)', padding: '5px 7px', borderRadius: 6, fontSize: 18 }}
-          >
-            <i className="ph-duotone ph-gear" />
-          </button>
-        )}
       </div>
-      {showAdminPanel && identity && (
+      {showEnrollModal && identity && (
         <OrgAdminPanel
           adminHandle={identity.handle}
-          onClose={() => setShowAdminPanel(false)}
+          onClose={() => { setShowEnrollModal(false); setShowAdminPanel(false) }}
         />
       )}
 
@@ -350,7 +354,8 @@ export default function WeaveApp() {
           dms={s.dms}
           callLog={[]}
           filesScope={s.filesScope}
-          activityScope={s.activityScope}
+          members={orgMembers}
+          isAdmin={!!identity?.handle?.startsWith('admin.')}
           onToggleTeam={id => setS(prev => ({ ...prev, teamOpen: { ...prev.teamOpen, [id]: !prev.teamOpen[id] }, team: id }))}
           onSelectChannel={(teamId, channelId) => setS(prev => ({ ...prev, rail: 'teams', team: teamId, channel: channelId, tab: 'posts', thread: null }))}
           onSelectDM={id => setS(prev => ({ ...prev, rail: 'chat', dm: id }))}
@@ -360,7 +365,7 @@ export default function WeaveApp() {
           onOpenCreate={() => setS(prev => ({ ...prev, modal: 'create', newName: '', newDesc: '', newKind: 'standard' }))}
           onOpenPalette={() => setS(prev => ({ ...prev, palette: true, pq: '' }))}
           onSetFilesScope={id => setS(prev => ({ ...prev, filesScope: id }))}
-          onSetActivityScope={id => setS(prev => ({ ...prev, activityScope: id }))}
+          onEnrollMember={() => setShowEnrollModal(true)}
         />
 
         <main style={{ position: 'relative', display: 'flex', minHeight: 0, background: '#f3f2f2' }}>
@@ -432,8 +437,10 @@ export default function WeaveApp() {
             <FilesView files={[]} />
           )}
 
-          {s.rail === 'activity' && !callActive && !isRinging && (
-            <ActivityView items={activityItems} onNavigate={handleActivityNav} />
+          {s.rail === 'members' && !callActive && !isRinging && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(32,30,29,.45)', fontSize: 13 }}>
+              {orgMembers.length === 0 ? 'No members enrolled yet — use "Enroll member" to add your first.' : `${orgMembers.length} member${orgMembers.length !== 1 ? 's' : ''} in this org`}
+            </div>
           )}
 
           {s.rail === 'meet' && !callActive && !isRinging && (

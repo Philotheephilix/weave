@@ -10,12 +10,12 @@ interface RailItem {
 }
 
 const railDefs: RailItem[] = [
-  { id: 'activity', label: 'Activity', icon: 'ph-bell-ringing',       badge: '4' },
-  { id: 'chat',     label: 'Chat',     icon: 'ph-chat-teardrop-text', badge: '2' },
-  { id: 'teams',    label: 'Teams',    icon: 'ph-users-three',        badge: ''  },
-  { id: 'calls',    label: 'Calls',    icon: 'ph-phone',              badge: ''  },
-  { id: 'files',    label: 'Files',    icon: 'ph-folder-open',        badge: ''  },
-  { id: 'meet',     label: 'Meet',     icon: 'ph-video-camera',       badge: ''  },
+  { id: 'members', label: 'Members', icon: 'ph-users-three',        badge: ''  },
+  { id: 'chat',    label: 'Chat',    icon: 'ph-chat-teardrop-text', badge: '2' },
+  { id: 'teams',   label: 'Teams',   icon: 'ph-hash',               badge: ''  },
+  { id: 'calls',   label: 'Calls',   icon: 'ph-phone',              badge: ''  },
+  { id: 'files',   label: 'Files',   icon: 'ph-folder-open',        badge: ''  },
+  { id: 'meet',    label: 'Meet',    icon: 'ph-video-camera',       badge: ''  },
 ]
 
 interface NavRailProps {
