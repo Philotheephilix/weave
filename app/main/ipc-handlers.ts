@@ -939,9 +939,8 @@ export function registerIpcHandlers(
 
   app.on('before-quit', () => { _nostrUnsub(); _nostrCallUnsub() })
 
-  // Start the onion HTTP listener so peers can reach us via Tor
-  const ONION_HTTP_PORT = 3001
-  onionListener?.start(ONION_HTTP_PORT, win).catch(() => {})
+  // onionListener is started by bootstrap (index.ts) before registerIpcHandlers is called,
+  // so it's already listening on its OS-assigned port here.
 
   // Initialize and register Tor-native call handlers (Noise_XX, no WebRTC)
   initCallOrchestrator(tor)

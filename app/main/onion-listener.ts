@@ -12,6 +12,12 @@ export class OnionListener {
   private server: http.Server | null = null
   private win: BrowserWindow | null = null
 
+  /** Returns the actual port the server bound to (useful when port 0 was passed). */
+  get port(): number {
+    const addr = this.server?.address()
+    return addr && typeof addr === 'object' ? addr.port : 0
+  }
+
   start(port: number, win: BrowserWindow): Promise<void> {
     this.win = win
     if (this.server) return Promise.resolve()

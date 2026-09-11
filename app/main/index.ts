@@ -36,13 +36,6 @@ async function bootstrap(): Promise<void> {
   // Tor and DHT startup is best-effort — window must open even if they fail
   await Promise.allSettled([tor.start(), dht.start()])
 
-  // Port 3001 = DM/signal HTTP listener (Tor routes .onion:80 → here)
-  // Port 3000 = renderer dev server (only in dev, mapped separately)
-  const ONION_PORT = 3001
-  tor.createOnionService(ONION_PORT).then(async onion => {
-    dht.announce(identity.viewPriv, identity.viewPub, onion.onionAddress)
-  }).catch(() => {})
-
   // Initialise ArkivManager with the correct spend key.
   // Wrapped in a mutable ref so the login handler can replace it after auth.
   const spendPrivHex = `0x${Buffer.from(identity.spendPriv).toString('hex')}` as `0x${string}`
@@ -61,6 +54,13 @@ async function bootstrap(): Promise<void> {
       nodeIntegration: false,
     },
   })
+
+  // Start the onion HTTP listener on an OS-assigned port (port 0) so multiple
+  // instances on the same machine don't conflict. Must be after win is created.
+  await onionListener.start(0, win)
+  tor.createOnionService(onionListener.port).then(async onion => {
+    dht.announce(identity.viewPriv, identity.viewPub, onion.onionAddress)
+  }).catch(() => {})
 
   registerIpcHandlers(tor, dht, nostr, idMgr, identityRef, win, arkivRef, onionListener)
 
