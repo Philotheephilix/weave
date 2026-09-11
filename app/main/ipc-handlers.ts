@@ -625,7 +625,8 @@ export function registerIpcHandlers(
     org: string; channel: string; recipientLabel: string; keyVersion: number
   }) => {
     if (!getArkiv()) return null
-    const key = await getArkiv()!.fetchChannelKey(org, channel, recipientLabel, keyVersion, getIdentity().noisePriv)
+    const normLabel = recipientLabel.replace(/\.weave\.eth$/, '')
+    const key = await getArkiv()!.fetchChannelKey(org, channel, normLabel, keyVersion, getIdentity().noisePriv)
     return key ? Buffer.from(key).toString('hex') : null
   })
 
@@ -635,7 +636,7 @@ export function registerIpcHandlers(
     org: string; channel: string; recipientLabel: string
   }) => {
     if (!getArkiv()) return -1
-    return getArkiv()!.getLatestKeyVersion(org, channel, recipientLabel)
+    return getArkiv()!.getLatestKeyVersion(org, channel, recipientLabel.replace(/\.weave\.eth$/, ''))
   })
 
   ipcMain.handle('weave:arkiv:rotateChannelKey', async (_e, {
@@ -646,12 +647,14 @@ export function registerIpcHandlers(
     members: { label: string; noisePub: string }[]
   }) => {
     if (!getArkiv()) return { ok: false, reason: 'disabled' }
-    const newKey     = deriveChannelKey()
-    const firstLabel = members[0]?.label ?? ''
-    const currentVer = await getArkiv()!.getLatestKeyVersion(org, channel, firstLabel)
-    const newVersion = currentVer + 1
+    const newKey = deriveChannelKey()
+    // Normalize: strip .weave.eth so stored recipient matches what poller queries with
+    const normMembers = members.map(m => ({ ...m, label: m.label.replace(/\.weave\.eth$/, '') }))
+    const firstLabel  = normMembers[0]?.label ?? ''
+    const currentVer  = await getArkiv()!.getLatestKeyVersion(org, channel, firstLabel)
+    const newVersion  = currentVer + 1
     // Sequential: Arkiv requires one wallet → one nonce at a time
-    for (const m of members) {
+    for (const m of normMembers) {
       await getArkiv()!.storeChannelKey(
         org, channel, m.label, newVersion,
         newKey,

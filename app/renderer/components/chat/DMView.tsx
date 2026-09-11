@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { DMMessage } from '@/lib/types'
 import { ensLabel, ensInitials, ensTint } from '@/lib/ens-display'
 import { ipcPeerReachable } from '@/lib/ipc'
@@ -17,6 +17,7 @@ interface DMViewProps {
 }
 
 export default function DMView({ dmId, messages, draft, onDraft, onSend, onStartAudioCall, onStartVideoCall, onOpenMembers }: DMViewProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [presenceColor, setPresenceColor] = useState<string>('#9b9797')
   const [dmStatus, setDmStatus] = useState<string>(dmId === 'notes' ? 'Agent · scoped to 2 channels' : 'Direct message')
   const [fingerprint, setFingerprint] = useState<string | null>(null)
@@ -52,6 +53,12 @@ export default function DMView({ dmId, messages, draft, onDraft, onSend, onStart
     }).catch(() => { /* Tor not available */ })
     return () => { cancelled = true }
   }, [dmId])
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
 
   const p = {
     name: ensLabel(dmId),
@@ -92,7 +99,7 @@ export default function DMView({ dmId, messages, draft, onDraft, onSend, onStart
           <i className="ph-duotone ph-info" style={{ fontSize: 19 }}></i>
         </button>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 20px 8px' }}>
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 20px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
           {fingerprint && (
             <div style={{ alignSelf: 'center', marginBottom: 6, padding: '5px 10px', background: '#e9f8ff', borderRadius: 2, fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 9.5, color: '#004961', textAlign: 'center' }}>

@@ -12,7 +12,12 @@ import { noiseKeygen, NoiseSession } from './noise-session.js'
 import { connectToOnion } from './onion-client.js'
 import { setActiveTransport, clearTransport, isTransportActive, registerAudioIpcHandlers } from './audio-bridge.js'
 
-const CALL_PORT = 7331
+function cliCallPort(): number {
+  const prefix = '--call-port='
+  const arg = process.argv.find(a => a.startsWith(prefix))
+  return arg ? parseInt(arg.slice(prefix.length), 10) : 7331
+}
+const CALL_PORT = cliCallPort()
 
 let torMgr: TorManager | null = null
 const onionServer = new OnionServer()

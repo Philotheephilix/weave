@@ -15,6 +15,15 @@ export class TorManager {
   private proc: ChildProcess | null = null
   private controlSocket: net.Socket | null = null
   private ready = false
+  private socksPort: number
+  private controlPort: number
+  private dataDir: string
+
+  constructor(opts?: { socksPort?: number; controlPort?: number; dataDir?: string }) {
+    this.socksPort   = opts?.socksPort   ?? 9050
+    this.controlPort = opts?.controlPort ?? 9051
+    this.dataDir     = opts?.dataDir     ?? path.join(os.tmpdir(), 'weave-tor')
+  }
 
   private torBinPath(): string {
     const platform = process.platform
@@ -40,37 +49,73 @@ export class TorManager {
     const bin = this.torBinPath()
     if (!fs.existsSync(bin)) throw new Error(`Tor binary not found at ${bin}. Bundle tor into binaries/tor/ or install system Tor.`)
 
-    const dataDir = path.join(os.tmpdir(), 'weave-tor')
+    fs.mkdirSync(this.dataDir, { recursive: true })
     this.proc = spawn(bin, [
-      '--SocksPort', '9050',
-      '--ControlPort', '9051',
+      '--SocksPort',    String(this.socksPort),
+      '--ControlPort',  String(this.controlPort),
       '--CookieAuthentication', '1',
-      '--DataDirectory', dataDir,
+      '--DataDirectory', this.dataDir,
     ], { stdio: ['ignore', 'pipe', 'pipe'] })
 
     await this._waitForReady()
-    await this._authenticate(dataDir)
+    await this._authenticate(this.dataDir)
     this.ready = true
   }
 
   private _waitForReady(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Tor startup timeout')), 30_000)
+      const deadline = Date.now() + 60_000
+      let done = false
+
+      const succeed = () => { if (!done) { done = true; resolve() } }
+      const fail    = (e: Error) => { if (!done) { done = true; reject(e) } }
+
+      // Primary: watch stdout for the bootstrap line
       this.proc!.stdout!.on('data', (chunk: Buffer) => {
-        if (chunk.toString().includes('Bootstrapped 100%')) {
-          clearTimeout(timeout)
-          resolve()
-        }
+        if (chunk.toString().includes('Bootstrapped 100%')) succeed()
       })
-      this.proc!.on('error', (err) => { clearTimeout(timeout); reject(err) })
-      this.proc!.on('exit', (code) => { clearTimeout(timeout); reject(new Error(`Tor exited with code ${code}`)) })
+      this.proc!.on('error', fail)
+      this.proc!.on('exit', (code) => fail(new Error(`Tor exited with code ${code}`)))
+
+      // Fallback: poll the control port every 2s. Each probe opens a fresh socket,
+      // authenticates with the cookie, then queries bootstrap — avoids "514 auth required".
+      const poll = async () => {
+        while (!done && Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, 2000))
+          if (done) break
+          try {
+            const cookiePath = path.join(this.dataDir, 'control_auth_cookie')
+            if (!fs.existsSync(cookiePath)) continue
+            const cookie = fs.readFileSync(cookiePath).toString('hex')
+            const reply = await new Promise<string>((res, rej) => {
+              const sock = net.createConnection(this.controlPort, '127.0.0.1')
+              let buf = ''
+              sock.on('data', (d: Buffer) => {
+                buf += d.toString()
+                const lines = buf.split('\r\n').filter(Boolean)
+                const last = lines[lines.length - 1] ?? ''
+                if (/^\d{3} /.test(last)) { sock.destroy(); res(buf) }
+              })
+              sock.on('error', rej)
+              sock.once('connect', () => {
+                sock.write(`AUTHENTICATE ${cookie}\r\nGETINFO status/bootstrap-phase\r\n`)
+              })
+              setTimeout(() => { sock.destroy(); rej(new Error('timeout')) }, 3000)
+            })
+            if (reply.includes('PROGRESS=100')) { succeed(); break }
+          } catch { /* control port not yet up */ }
+        }
+        if (!done) fail(new Error('Tor startup timeout (60s)'))
+      }
+      // Start polling after a short delay so the control port has time to open
+      setTimeout(() => { void poll() }, 3000)
     })
   }
 
   private _controlCmd(cmd: string): Promise<string> {
     return new Promise((resolve, reject) => {
       if (!this.controlSocket || this.controlSocket.destroyed) {
-        this.controlSocket = net.createConnection(9051, '127.0.0.1')
+        this.controlSocket = net.createConnection(this.controlPort, '127.0.0.1')
       }
       let buf = ''
       const onData = (data: Buffer) => {
@@ -128,7 +173,7 @@ export class TorManager {
   }
 
   getSocksProxy(): { host: string; port: number } {
-    return { host: '127.0.0.1', port: 9050 }
+    return { host: '127.0.0.1', port: this.socksPort }
   }
 
   stop(): void {

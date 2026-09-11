@@ -11,7 +11,16 @@ import { OnionListener } from './onion-listener.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const tor          = new TorManager()
+// Allow per-instance Tor ports via CLI flags (e.g. --tor-socks-port=9052 --tor-control-port=9053)
+function cliArg(flag: string): string | undefined {
+  const prefix = `--${flag}=`
+  return process.argv.find(a => a.startsWith(prefix))?.slice(prefix.length)
+}
+const torSocksPort   = parseInt(cliArg('tor-socks-port')   ?? '9050', 10)
+const torControlPort = parseInt(cliArg('tor-control-port') ?? '9051', 10)
+const torDataDir     = cliArg('tor-data-dir') ?? undefined
+
+const tor = new TorManager({ socksPort: torSocksPort, controlPort: torControlPort, dataDir: torDataDir })
 const dht          = new DHTDiscovery()
 const nostr        = new NostrDelivery()
 const idMgr        = new IdentityManager()

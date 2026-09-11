@@ -20,8 +20,6 @@ import MembersModal from '@/components/modals/MembersModal'
 import NewDMModal from '@/components/modals/NewDMModal'
 import SearchPalette from '@/components/modals/SearchPalette'
 import OrgAdminPanel from '@/components/admin/OrgAdminPanel'
-import { ipcPeerReachable } from '@/lib/ipc'
-
 const initialState: AppState = {
   rail: 'teams',
   teamOpen: {},
@@ -261,20 +259,28 @@ export default function WeaveApp() {
       if (!payload?.signal || payload.signal.type !== 'call-invite' || !payload.signal.onionAddr) return
       const callerLabel = payload.from
       const onionAddr = payload.signal.onionAddr
-      // Show ringing state then dial back
       activePeerLabelRef.current = callerLabel
       setS(prev => ({ ...prev, call: { state: 'ringing', with: callerLabel, title: callerLabel + ' · audio', base: 0, people: ['me', callerLabel] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: false }))
-      // Dial back to caller's onion via Tor
-      window.weave?.call?.initiate({ onionAddr }).then(() => {
-        setS(prev => ({ ...prev, call: { ...prev.call, state: 'live' } }))
+      // Dial out to caller's onion, then start mic+audio pipeline
+      window.weave?.call?.initiate({ onionAddr }).then(async () => {
+        setS(prev => ({ ...prev, call: prev.call ? { ...prev.call, state: 'live' } : null, tick: 0 }))
+        await rtc.startAudioPipeline()
       }).catch((err: Error) => {
         say(`Call failed: ${err?.message ?? 'Tor dial error'}`)
-        setS(prev => ({ ...prev, call: { state: 'idle', title: '', base: 0, people: [] } }))
+        setS(prev => ({ ...prev, call: null }))
       })
     }
     window.weave?.on?.('weave:call:signal', handler as (...args: unknown[]) => void)
     return () => { window.weave?.off?.('weave:call:signal', handler as (...args: unknown[]) => void) }
-  }, [identity])
+  }, [identity, rtc])
+
+  // Auto-transition ringing → live when Noise_XX handshake completes on the caller side
+  useEffect(() => {
+    const unsub = window.weave?.call?.onConnected?.(() => {
+      setS(prev => prev.call?.state === 'ringing' ? { ...prev, call: { ...prev.call, state: 'live' }, tick: 0 } : prev)
+    })
+    return () => { unsub?.() }
+  }, [])
 
   // Keep teamsRef current so the Arkiv poller callback always sees the latest teams
   useEffect(() => { teamsRef.current = teams }, [teams])
@@ -486,17 +492,10 @@ export default function WeaveApp() {
   const ring = (id: string, kind: string) => {
     activePeerLabelRef.current = id
     setS(prev => ({ ...prev, call: { state: 'ringing', with: id, title: id + ' · ' + kind, base: 0, people: ['me', id] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: kind === 'video' }))
-    // Gate call initiation on Tor reachability — calls only work over Tor
-    ipcPeerReachable(id).then(({ reachable }) => {
-      if (!reachable) {
-        say(`${id} is not reachable over Tor · call unavailable`)
-        setS(prev => ({ ...prev, call: { state: 'idle', title: '', base: 0, people: [] } }))
-        return
-      }
-      rtc.startCall(id).catch(() => {})
-    }).catch(() => {
-      say('Tor connectivity check failed · call unavailable')
-      setS(prev => ({ ...prev, call: { state: 'idle', title: '', base: 0, people: [] } }))
+    // Go online + signal peer; they dial back and the Noise_XX handshake completes
+    rtc.startCall(id).catch((err: Error) => {
+      say(`Call failed: ${err?.message ?? 'Tor unavailable'}`)
+      setS(prev => ({ ...prev, call: null }))
     })
   }
 
@@ -675,6 +674,7 @@ export default function WeaveApp() {
               onOpenInvite={() => setS(prev => ({ ...prev, modal: 'invite' }))}
               onStartCall={() => startMeet('#' + currentChan!.name + ' · Meet now')}
               showPrivacy={true}
+              scrollToBottom={true}
             />
           )}
 
