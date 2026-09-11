@@ -82,12 +82,13 @@ function chanKey(teamId: string, channelId: string) {
 export default function WeaveApp() {
   const [s, setS] = useState<AppState>(initialState)
   const [teams, setTeams] = useState<Team[]>([])
+  const teamsRef = useRef<Team[]>([])
   const [identity, setIdentity] = useState<{ handle: string } | null>(null)
   const [identityChecked, setIdentityChecked] = useState(false)
   const [orgMembers, setOrgMembers] = useState<Array<{ name: string; address: string }>>([])
   const [showEnrollModal, setShowEnrollModal] = useState(false)
   const [showNewDMModal, setShowNewDMModal] = useState(false)
-  const [callLog, setCallLog] = useState<Array<{ id: string; name: string; dir: string; meta: string; time: string }>>([])
+  const [callLog, setCallLog] = useState<Array<{ id: string; name: string; dir: 'in' | 'out' | 'missed'; meta: string; time: string }>>([])
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const rtc = useWebRTC()
@@ -189,6 +190,9 @@ export default function WeaveApp() {
     return () => { window.weave?.off?.('weave:dm:received', handler as (...args: unknown[]) => void) }
   }, [identity, orgName])
 
+  // Keep teamsRef current so the Arkiv poller callback always sees the latest teams
+  useEffect(() => { teamsRef.current = teams }, [teams])
+
   // Start Arkiv poller when identity and channels are known
   useEffect(() => {
     if (!identity) return
@@ -202,8 +206,8 @@ export default function WeaveApp() {
     startArkivPoller(org, myLabel, channels, (action) => {
       if (action.type === 'ARKIV_MESSAGES_RECEIVED') {
         const { channel, messages } = action.payload as { channel: string; messages: { id: string; sender: string; timestamp: number; text: string }[] }
-        // Find which team owns this channel
-        const ownerTeam = teams.find(t => t.channels.some(c => c.id === channel))
+        // Find which team owns this channel (use ref to avoid stale closure)
+        const ownerTeam = teamsRef.current.find(t => t.channels.some(c => c.id === channel))
         if (!ownerTeam) return
         const k = chanKey(ownerTeam.id, channel)
         setS(prev => {
@@ -471,12 +475,12 @@ export default function WeaveApp() {
           dms={s.dms}
           callLog={callLog}
           members={orgMembers}
-          isAdmin={!!identity?.handle?.startsWith('admin.')}
+          isAdmin={identity?.handle?.split('.')[0] === 'admin'}
           onToggleTeam={id => setS(prev => ({ ...prev, teamOpen: { ...prev.teamOpen, [id]: !prev.teamOpen[id] }, team: id }))}
           onSelectChannel={(teamId, channelId) => setS(prev => ({ ...prev, rail: 'teams', team: teamId, channel: channelId, tab: 'posts', thread: null }))}
           onSelectDM={id => setS(prev => ({ ...prev, rail: 'chat', dm: id }))}
           onJoinVoice={joinVoice}
-          onToggleMic={() => setS(prev => ({ ...prev, mic: !prev.mic }))}
+          onToggleMic={() => setS(prev => { const next = !prev.mic; rtc.toggleMic(next); return { ...prev, mic: next } })}
           onLeaveVoice={leaveVoice}
           onOpenCreate={() => setS(prev => ({ ...prev, modal: 'create', newName: '', newDesc: '', newKind: 'standard' }))}
           onOpenNewDM={() => setShowNewDMModal(true)}

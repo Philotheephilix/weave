@@ -25,6 +25,7 @@ export async function startArkivPoller(
         ? parseInt(storedTs, 10)
         : Date.now() - 7 * 24 * 3600_000   // default: 7 days back on first run
 
+      if (!window.weave?.arkiv) return
       const keyVersion = await window.weave.arkiv.getLatestKeyVersion({
         org:           orgName,
         channel,

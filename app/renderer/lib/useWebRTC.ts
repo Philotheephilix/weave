@@ -94,6 +94,7 @@ export function useWebRTC(): WebRTCHandle {
       const unsub = ipcCallOnSignal(async ({ signal }) => {
         const pc = pcRef.current
         if (!pc) return
+        if (typeof signal !== 'object' || signal === null || !('type' in signal)) return
         try {
           if (signal.type === 'offer') {
             await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp }))
