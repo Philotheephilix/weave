@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { AppState, RailId, Team, Channel } from '@/lib/types'
 import OnboardingScreen from '@/components/onboarding/OnboardingScreen'
 import { startArkivPoller } from '@/lib/arkiv-poller'
-import { useWebRTC } from '@/lib/useWebRTC'
+import { useTorCall } from '@/lib/useTorCall'
 
 import Header from '@/components/layout/Header'
 import NavRail from '@/components/layout/NavRail'
@@ -92,7 +92,7 @@ export default function WeaveApp() {
   const [callLog, setCallLog] = useState<Array<{ id: string; name: string; dir: 'in' | 'out' | 'missed'; meta: string; time: string }>>([])
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const rtc = useWebRTC()
+  const rtc = useTorCall()
   const activePeerLabelRef = useRef<string | null>(null)
 
   // Derive org name from handle — must be before any useEffect that uses it in dep arrays
@@ -190,6 +190,91 @@ export default function WeaveApp() {
     window.weave?.on?.('weave:dm:received', handler as (...args: unknown[]) => void)
     return () => { window.weave?.off?.('weave:dm:received', handler as (...args: unknown[]) => void) }
   }, [identity, orgName])
+
+  // Poll Arkiv for DMs — active conversation every 5s, all known peers every 15s
+  useEffect(() => {
+    if (!identity || !orgName) return
+    let cancelled = false
+
+    const pollPeer = (peer: string) => {
+      if (cancelled || !window.weave?.arkiv?.fetchDMs) return
+      const normPeer = peer.replace(/\.weave\.eth$/, '')
+      window.weave.arkiv.fetchDMs({ org: orgName, peerLabel: normPeer, sinceTimestamp: 0 })
+        .then((msgs: Array<{ id: string; sender: string; timestamp: number; text: string; mine: boolean }>) => {
+          if (cancelled || !msgs || msgs.length === 0) return
+          const mapped = msgs.map((m: { mine: boolean; timestamp: number; text: string }) => ({
+            mine: m.mine,
+            time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            text: m.text,
+          }))
+          setS(prev => {
+            const cur = prev.dms[peer] || []
+            if (mapped.length <= cur.length) return prev
+            // Add peer to dmOrder if not already present (new inbound DM)
+            const newDmOrder = prev.dmOrder.includes(peer) ? prev.dmOrder : [peer, ...prev.dmOrder]
+            if (newDmOrder !== prev.dmOrder && orgName) {
+              window.weave?.dm?.open?.({ orgName, peerLabel: normPeer }).catch(() => {})
+            }
+            return { ...prev, dms: { ...prev.dms, [peer]: mapped }, dmOrder: newDmOrder }
+          })
+        })
+        .catch(() => { /* ignore */ })
+    }
+
+    // Active DM: poll every 5s
+    let activeId: ReturnType<typeof setInterval> | null = null
+    if (s.dm && s.rail === 'chat') {
+      const peer = s.dm
+      pollPeer(peer)
+      activeId = setInterval(() => pollPeer(peer), 5000)
+    }
+
+    // All known DM peers + all org members: poll every 15s to catch new senders
+    const bgId = setInterval(() => {
+      // Read current state snapshot via functional updater without mutating
+      let currentDmOrder: string[] = []
+      setS(prev => { currentDmOrder = prev.dmOrder; return prev })
+      // Poll known peers
+      currentDmOrder.forEach((peer: string) => pollPeer(peer))
+      // Poll org members not yet in dmOrder
+      orgMembers.forEach(m => {
+        const fullLabel = m.name ?? ''
+        const shortLabel = fullLabel.replace(/\.weave\.eth$/, '')
+        if (shortLabel && !currentDmOrder.includes(fullLabel) && !currentDmOrder.includes(shortLabel)) {
+          pollPeer(fullLabel || shortLabel)
+        }
+      })
+    }, 15000)
+
+    return () => {
+      cancelled = true
+      if (activeId) clearInterval(activeId)
+      clearInterval(bgId)
+    }
+  }, [identity, orgName, s.dm, s.rail, orgMembers])
+
+  // Listen for incoming Tor call invites (caller sends onionAddr via Nostr signal)
+  useEffect(() => {
+    if (!identity) return
+    const handler = (...args: unknown[]) => {
+      const payload = args[0] as { from: string; signal: { type?: string; onionAddr?: string } } | undefined
+      if (!payload?.signal || payload.signal.type !== 'call-invite' || !payload.signal.onionAddr) return
+      const callerLabel = payload.from
+      const onionAddr = payload.signal.onionAddr
+      // Show ringing state then dial back
+      activePeerLabelRef.current = callerLabel
+      setS(prev => ({ ...prev, call: { state: 'ringing', with: callerLabel, title: callerLabel + ' · audio', base: 0, people: ['me', callerLabel] }, tick: 0, callMode: 'grid', callPanel: 'people', cam: false }))
+      // Dial back to caller's onion via Tor
+      window.weave?.call?.initiate({ onionAddr }).then(() => {
+        setS(prev => ({ ...prev, call: { ...prev.call, state: 'live' } }))
+      }).catch((err: Error) => {
+        say(`Call failed: ${err?.message ?? 'Tor dial error'}`)
+        setS(prev => ({ ...prev, call: { state: 'idle', title: '', base: 0, people: [] } }))
+      })
+    }
+    window.weave?.on?.('weave:call:signal', handler as (...args: unknown[]) => void)
+    return () => { window.weave?.off?.('weave:call:signal', handler as (...args: unknown[]) => void) }
+  }, [identity])
 
   // Keep teamsRef current so the Arkiv poller callback always sees the latest teams
   useEffect(() => { teamsRef.current = teams }, [teams])
