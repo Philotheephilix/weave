@@ -4,6 +4,13 @@ pragma solidity ^0.8.25;
 /// @dev ENSIP-10 ExtendedResolver — answers all *.weave.eth queries without
 ///      per-user on-chain registration. One resolver handles the entire namespace.
 ///      authorizedSetters enforces per-name write access.
+///
+///      Phase 2 additions:
+///        - Multi-coin addr(node, coinType) per ENSIP-9 (selector 0xf1cb7e06)
+///        - contenthash(node) per ENSIP-7 (selector 0xbc1c58d1)
+///        - setContentHash / setCoinAddr with setter auth
+///        - Expiry-aware resolve: if weave.expiresAt TXT is set and past, returns
+///          empty for addr and text queries (guest token expiry)
 contract WeaveWildcardResolver {
     struct WeaveIdentity {
         bytes  stealthViewKey;   // secp256k1 compressed 33 bytes — ERC-5564 viewing key
@@ -18,14 +25,29 @@ contract WeaveWildcardResolver {
     }
 
     // keccak256(label) => identity
-    // label is the full sub-label under .weave.eth, e.g. "philo.google" for philo.google.weave.eth
     mapping(bytes32 => WeaveIdentity) public identities;
-    // authorized to call setIdentity (WeaveRegistrar gets this role)
+
+    // labelHash => key => value — arbitrary TXT records
+    mapping(bytes32 => mapping(bytes32 => string)) private _txt;
+
+    // ENSIP-9: labelHash => coinType => coin address bytes
+    mapping(bytes32 => mapping(uint256 => bytes)) private _coinAddr;
+
+    // ENSIP-7: labelHash => contenthash bytes
+    mapping(bytes32 => bytes) private _contentHash;
+
+    // authorized to call setIdentity / setTxt / setCoinAddr / setContentHash
     mapping(address => bool) public authorizedSetters;
 
     address public owner;
 
+    // keccak of "weave.expiresAt" — cached for gas efficiency in resolve()
+    bytes32 private constant _EXPIRES_AT_KEY = keccak256("weave.expiresAt");
+
     event IdentitySet(bytes32 indexed labelHash, address indexed setter);
+    event TxtSet(bytes32 indexed labelHash, string key, address indexed setter);
+    event CoinAddrSet(bytes32 indexed labelHash, uint256 coinType, address indexed setter);
+    event ContentHashSet(bytes32 indexed labelHash, address indexed setter);
     event OwnershipTransferred(address indexed prev, address indexed next);
 
     error NotOwner();
@@ -40,6 +62,11 @@ contract WeaveWildcardResolver {
         _;
     }
 
+    modifier onlyAuthorized() {
+        if (!authorizedSetters[msg.sender] && msg.sender != owner) revert NotAuthorized();
+        _;
+    }
+
     function transferOwnership(address newOwner) external onlyOwner {
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
@@ -49,46 +76,86 @@ contract WeaveWildcardResolver {
         authorizedSetters[account] = grant;
     }
 
-    function clearIdentity(bytes32 labelHash) external {
-        if (!authorizedSetters[msg.sender] && msg.sender != owner) revert NotAuthorized();
+    function clearIdentity(bytes32 labelHash) external onlyAuthorized {
         delete identities[labelHash];
     }
 
-    function setIdentity(bytes32 labelHash, WeaveIdentity calldata identity) external {
-        if (!authorizedSetters[msg.sender] && msg.sender != owner) revert NotAuthorized();
+    function setIdentity(bytes32 labelHash, WeaveIdentity calldata identity) external onlyAuthorized {
         identities[labelHash] = identity;
         emit IdentitySet(labelHash, msg.sender);
     }
 
+    function setTxt(bytes32 labelHash, string calldata key, string calldata value) external onlyAuthorized {
+        _txt[labelHash][keccak256(bytes(key))] = value;
+        emit TxtSet(labelHash, key, msg.sender);
+    }
+
+    function getTxt(bytes32 labelHash, string calldata key) external view returns (string memory) {
+        return _txt[labelHash][keccak256(bytes(key))];
+    }
+
+    /// @notice Set a coin address for a name (ENSIP-9). coinType 60 = ETH.
+    function setCoinAddr(bytes32 labelHash, uint256 coinType, bytes calldata addr) external onlyAuthorized {
+        _coinAddr[labelHash][coinType] = addr;
+        emit CoinAddrSet(labelHash, coinType, msg.sender);
+    }
+
+    function getCoinAddr(bytes32 labelHash, uint256 coinType) external view returns (bytes memory) {
+        return _coinAddr[labelHash][coinType];
+    }
+
+    /// @notice Set a content hash for a name (ENSIP-7). Encoded per EIP-1577.
+    function setContentHash(bytes32 labelHash, bytes calldata hash) external onlyAuthorized {
+        _contentHash[labelHash] = hash;
+        emit ContentHashSet(labelHash, msg.sender);
+    }
+
+    function getContentHash(bytes32 labelHash) external view returns (bytes memory) {
+        return _contentHash[labelHash];
+    }
+
     /// @notice ENSIP-10 resolve(bytes dnsName, bytes data)
-    ///         Called by ENSv2 Universal Resolver for *.weave.eth queries.
-    ///         dnsName: DNS wire-format — length-prefixed labels, e.g.
-    ///           \x05philo\x06google\x05weave\x03eth\x00
-    ///         We hash all labels before the ".weave.eth" suffix to produce the
-    ///         lookup key, matching how WeaveRegistrar stores them:
-    ///           keccak256("philo.google") for philo.google.weave.eth
     function resolve(bytes calldata dnsName, bytes calldata data)
         external view returns (bytes memory)
     {
         bytes32 labelHash = _parseLabelHash(dnsName);
         require(labelHash != bytes32(0), "invalid name");
 
+        // Expiry check — if weave.expiresAt is set and in the past, return empty
+        string storage expiresAtStr = _txt[labelHash][_EXPIRES_AT_KEY];
+        if (bytes(expiresAtStr).length > 0) {
+            uint64 expiresAt = _parseUint64(expiresAtStr);
+            if (expiresAt != 0 && block.timestamp > expiresAt) {
+                return abi.encode("");
+            }
+        }
+
         WeaveIdentity storage id = identities[labelHash];
 
         require(data.length >= 4, "no selector");
         bytes4 sel = bytes4(data[:4]);
 
-        // IAddrResolver.addr(bytes32) = 0x3b3b57de  (returns address as bytes32 padded)
+        // IAddrResolver.addr(bytes32) = 0x3b3b57de
         if (sel == 0x3b3b57de) {
+            // Check explicit ETH coin addr first
+            bytes storage explicit = _coinAddr[labelHash][60];
+            if (explicit.length > 0 && explicit.length == 20) {
+                address a;
+                bytes memory b = explicit;
+                assembly { a := mload(add(b, 20)) }
+                return abi.encode(a);
+            }
             return abi.encode(id.ethAddress);
         }
 
-        // IAddressResolver.addr(bytes32,uint256) = 0xf1cb7e06 (coinType; 60 = ETH)
+        // IAddressResolver.addr(bytes32,uint256) = 0xf1cb7e06 (ENSIP-9 multi-coin)
         if (sel == 0xf1cb7e06) {
             (, uint256 coinType) = abi.decode(data[4:], (bytes32, uint256));
+            bytes storage stored = _coinAddr[labelHash][coinType];
+            if (stored.length > 0) return abi.encode(stored);
+            // Fallback: coinType 60 = ETH identity address
             if (coinType == 60) {
-                bytes memory addrBytes = abi.encodePacked(id.ethAddress);
-                return abi.encode(addrBytes);
+                return abi.encode(abi.encodePacked(id.ethAddress));
             }
             return abi.encode(bytes(""));
         }
@@ -96,41 +163,37 @@ contract WeaveWildcardResolver {
         // ITextResolver.text(bytes32,string) = 0x59d1d43c
         if (sel == 0x59d1d43c) {
             (, string memory key) = abi.decode(data[4:], (bytes32, string));
-            return abi.encode(_text(id, key));
+            return abi.encode(_textWithTxt(labelHash, id, key));
+        }
+
+        // IContentHashResolver.contenthash(bytes32) = 0xbc1c58d1 (ENSIP-7)
+        if (sel == 0xbc1c58d1) {
+            return abi.encode(_contentHash[labelHash]);
         }
 
         return "";
     }
 
-    /// @dev Parse DNS wire-format name, collecting dot-joined labels before ".weave.eth",
-    ///      then return keccak256 of that joined string.
-    ///      "philo.google.weave.eth" → keccak256("philo.google")
-    ///      "google.weave.eth"       → keccak256("google")
     function _parseLabelHash(bytes calldata dnsName) internal pure returns (bytes32) {
-        // Count the total number of labels so we can skip the last 2 (.weave, .eth)
-        // by collecting all labels first, then hashing all except the trailing 2.
-        bytes[] memory labels = new bytes[](32); // max 32 labels
+        bytes[] memory labels = new bytes[](32);
         uint256 count = 0;
         uint256 i = 0;
         while (i < dnsName.length) {
             uint8 len = uint8(dnsName[i]);
-            if (len == 0) break; // root label
+            if (len == 0) break;
             require(count < 32, "name too deep");
             require(i + 1 + len <= dnsName.length, "malformed dnsName");
             labels[count] = dnsName[i + 1 : i + 1 + len];
             count++;
             i += 1 + len;
         }
-        // Need at least 3 labels: <sub>.weave.eth (sub can be multi-segment but count > 2)
         if (count <= 2) return bytes32(0);
 
-        // Join all labels except the trailing two (.weave and .eth) with dots
-        // e.g. ["philo","google","weave","eth"] → "philo.google"
         uint256 subCount = count - 2;
         uint256 totalLen = 0;
         for (uint256 j = 0; j < subCount; j++) {
             totalLen += labels[j].length;
-            if (j < subCount - 1) totalLen += 1; // dot separator
+            if (j < subCount - 1) totalLen += 1;
         }
         bytes memory joined = new bytes(totalLen);
         uint256 pos = 0;
@@ -156,6 +219,28 @@ contract WeaveWildcardResolver {
         if (k == keccak256("avatar"))               return id.avatarUrl;
         if (k == keccak256("eth.address"))          return _addrHex(id.ethAddress);
         return "";
+    }
+
+    function _textWithTxt(bytes32 labelHash, WeaveIdentity storage id, string memory key)
+        internal view returns (string memory)
+    {
+        bytes32 k = keccak256(bytes(key));
+        string storage stored = _txt[labelHash][k];
+        if (bytes(stored).length > 0) return stored;
+        return _text(id, key);
+    }
+
+    /// @dev Parse a decimal uint64 string. Returns 0 on empty/malformed input.
+    function _parseUint64(string storage s) internal view returns (uint64) {
+        bytes storage b = bytes(s);
+        if (b.length == 0) return 0;
+        uint64 val = 0;
+        for (uint256 i = 0; i < b.length; i++) {
+            uint8 digit = uint8(b[i]);
+            if (digit < 48 || digit > 57) return 0;
+            val = val * 10 + uint64(digit - 48);
+        }
+        return val;
     }
 
     function _hex(bytes memory d) internal pure returns (string memory) {

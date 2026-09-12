@@ -5,7 +5,7 @@ import { randomBytes } from '@noble/hashes/utils'
 import { sha256 } from '@noble/hashes/sha256'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import { x25519 } from '@noble/curves/ed25519'
-import { createWalletClient, createPublicClient, http, parseAbiItem, decodeEventLog } from 'viem'
+import { createWalletClient, createPublicClient, http, parseAbiItem, decodeEventLog, keccak256, toHex } from 'viem'
 import { sepolia } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 import { TorManager } from './tor-manager.js'
@@ -117,6 +117,268 @@ const REGISTRAR_ABI = [
     outputs: [{ name: '', type: 'address' }],
   },
 ] as const
+
+const REGISTRAR_EAC_ABI = [
+  {
+    name: 'grantOrgRole',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',    type: 'string' },
+      { name: 'memberLabel', type: 'string' },
+      { name: 'memberAddr',  type: 'address' },
+      { name: 'roleBitmap',  type: 'uint256' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'revokeOrgRole',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',    type: 'string' },
+      { name: 'memberLabel', type: 'string' },
+      { name: 'memberAddr',  type: 'address' },
+      { name: 'roleBitmap',  type: 'uint256' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'getMemberRoles',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'orgLabel',   type: 'string' },
+      { name: 'memberAddr', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  // Phase 1: named roles + custom role registry
+  {
+    name: 'grantNamedRole',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',    type: 'string' },
+      { name: 'memberLabel', type: 'string' },
+      { name: 'memberAddr',  type: 'address' },
+      { name: 'slug',        type: 'string' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'revokeNamedRole',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',    type: 'string' },
+      { name: 'memberLabel', type: 'string' },
+      { name: 'memberAddr',  type: 'address' },
+      { name: 'slug',        type: 'string' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'defineOrgRole',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',     type: 'string' },
+      { name: 'nybble',       type: 'uint8' },
+      { name: 'slug',         type: 'string' },
+      { name: 'displayName',  type: 'string' },
+      { name: 'description',  type: 'string' },
+      { name: 'color',        type: 'string' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'listOrgRoles',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'orgLabel', type: 'string' }],
+    outputs: [{
+      name: '',
+      type: 'tuple[]',
+      components: [
+        { name: 'slug',        type: 'string' },
+        { name: 'displayName', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'color',       type: 'string' },
+        { name: 'bitmap',      type: 'uint256' },
+        { name: 'nybble',      type: 'uint8' },
+        { name: 'active',      type: 'bool' },
+      ],
+    }],
+  },
+  // Phase 2: capability flags + guest
+  {
+    name: 'setMemberCapabilities',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',    type: 'string' },
+      { name: 'memberLabel', type: 'string' },
+      {
+        name: 'caps',
+        type: 'tuple',
+        components: [
+          { name: 'channels',  type: 'string' },
+          { name: 'canInvite', type: 'bool' },
+          { name: 'canExport', type: 'bool' },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'registerGuest',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',       type: 'string' },
+      { name: 'memberLabel',    type: 'string' },
+      { name: 'memberAddr',     type: 'address' },
+      { name: 'durationSeconds', type: 'uint64' },
+      {
+        name: 'guestIdentity',
+        type: 'tuple',
+        components: [
+          { name: 'stealthViewKey',  type: 'bytes' },
+          { name: 'stealthSpendKey', type: 'bytes' },
+          { name: 'x25519Pubkey',    type: 'bytes' },
+          { name: 'onionAddress',    type: 'bytes' },
+          { name: 'nostrPubkey',     type: 'bytes' },
+          { name: 'ethAddress',      type: 'address' },
+          { name: 'displayName',     type: 'string' },
+          { name: 'avatarUrl',       type: 'string' },
+          { name: 'registeredAt',    type: 'uint64' },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'setMemberContentHash',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',    type: 'string' },
+      { name: 'memberLabel', type: 'string' },
+      { name: 'hash',        type: 'bytes' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'setMemberCoinAddr',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel',    type: 'string' },
+      { name: 'memberLabel', type: 'string' },
+      { name: 'coinType',    type: 'uint256' },
+      { name: 'addr',        type: 'bytes' },
+    ],
+    outputs: [],
+  },
+  // Phase 3: sub-admin management
+  {
+    name: 'addSubAdmin',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel', type: 'string' },
+      { name: 'account',  type: 'address' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'removeSubAdmin',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'orgLabel', type: 'string' },
+      { name: 'account',  type: 'address' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'subAdmins',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'orgLh',   type: 'bytes32' },
+      { name: 'account', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const
+
+const RESOLVER_TXT_ABI = [
+  {
+    name: 'setTxt',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'labelHash', type: 'bytes32' },
+      { name: 'key',       type: 'string' },
+      { name: 'value',     type: 'string' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'getTxt',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'labelHash', type: 'bytes32' },
+      { name: 'key',       type: 'string' },
+    ],
+    outputs: [{ name: '', type: 'string' }],
+  },
+  // Phase 2: content hash + multi-coin
+  {
+    name: 'setContentHash',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'labelHash', type: 'bytes32' },
+      { name: 'hash',      type: 'bytes' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'getContentHash',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'labelHash', type: 'bytes32' }],
+    outputs: [{ name: '', type: 'bytes' }],
+  },
+  {
+    name: 'setCoinAddr',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'labelHash', type: 'bytes32' },
+      { name: 'coinType',  type: 'uint256' },
+      { name: 'addr',      type: 'bytes' },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'getCoinAddr',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'labelHash', type: 'bytes32' },
+      { name: 'coinType',  type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bytes' }],
+  },
+] as const
+
+// ROLE_REGISTRAR bit — grants sub-name registration on an org clone
+const ROLE_REGISTRAR = 0x1n
 
 function generateSeedPhrase(): string[] {
   const bytes = randomBytes(16) // 128 bits of entropy
@@ -681,7 +943,7 @@ export function registerIpcHandlers(
         getIdentity().noisePriv,
       )
     }
-    return newVersion
+    return { ok: true, version: newVersion }
   })
 
   // ── Arkiv: message storage ──────────────────────────────────────────────────
@@ -695,7 +957,7 @@ export function registerIpcHandlers(
     const saved      = loadIdentity() as { handle?: string } | null
     const myLabel    = stripEnsSuffix(saved?.handle ?? '')
     const K_channel  = await getArkiv()!.fetchChannelKey(org, channel, myLabel, keyVersion, getIdentity().noisePriv)
-    if (!K_channel) throw new Error('No channel key — not a member or key not fetched yet')
+    if (!K_channel) return { ok: false, reason: 'No channel key — not a member or key not fetched yet' }
     const senderLabel = saved?.handle ?? 'unknown'
     return getArkiv()!.postMessage(org, channel, senderLabel, K_channel, keyVersion, text, expiryDays)
   })
@@ -969,6 +1231,342 @@ export function registerIpcHandlers(
   // Initialize and register Tor-native call handlers (Noise_XX, no WebRTC)
   initCallOrchestrator(tor)
   registerCallIpcHandlers(win)
+
+  // ── EAC: grant admin role to a member ─────────────────────────────────────
+  ipcMain.handle('ens:grantAdmin', async (_e, {
+    orgName, memberName, memberAddress,
+  }: { orgName: string; memberName: string; memberAddress: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      const savedOrgName = savedHandle?.startsWith('admin.') ? savedHandle.split('.')[1] : null
+      if (!saved || !savedOrgName || savedOrgName !== orgName) {
+        return { error: 'Must be logged in as org admin' }
+      }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const walletClient = createWalletClient({
+        account: privateKeyToAccount(ethPrivKey),
+        chain: sepolia,
+        transport: http(SEPOLIA_RPC),
+      })
+      const txHash = await walletClient.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'grantOrgRole',
+        args: [orgName, memberName, memberAddress as `0x${string}`, ROLE_REGISTRAR],
+      })
+      const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      await pubClient.waitForTransactionReceipt({ hash: txHash })
+      return { ok: true, txHash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── EAC: revoke admin role from a member ──────────────────────────────────
+  ipcMain.handle('ens:revokeAccess', async (_e, {
+    orgName, memberName, memberAddress,
+  }: { orgName: string; memberName: string; memberAddress: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      const savedOrgName = savedHandle?.startsWith('admin.') ? savedHandle.split('.')[1] : null
+      if (!saved || !savedOrgName || savedOrgName !== orgName) {
+        return { error: 'Must be logged in as org admin' }
+      }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const walletClient = createWalletClient({
+        account: privateKeyToAccount(ethPrivKey),
+        chain: sepolia,
+        transport: http(SEPOLIA_RPC),
+      })
+      const txHash = await walletClient.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'revokeOrgRole',
+        args: [orgName, memberName, memberAddress as `0x${string}`, ROLE_REGISTRAR],
+      })
+      const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      await pubClient.waitForTransactionReceipt({ hash: txHash })
+      return { ok: true, txHash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── EAC: get member's role bitmap on an org ────────────────────────────────
+  ipcMain.handle('ens:getMemberRole', async (_e, {
+    orgName, memberAddress,
+  }: { orgName: string; memberAddress: string }) => {
+    try {
+      const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const bitmap = await pubClient.readContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'getMemberRoles',
+        args: [orgName, memberAddress as `0x${string}`],
+      })
+      const isAdmin = (bitmap & ROLE_REGISTRAR) !== 0n
+      return { bitmap: bitmap.toString(), isAdmin }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── TXT: set a TXT record directly (authorized setter required on resolver) ─
+  ipcMain.handle('ens:setTxt', async (_e, {
+    labelHash, key, value,
+  }: { labelHash: string; key: string; value: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      if (!saved) return { error: 'Not logged in' }
+      // Only org admins are granted authorizedSetter on the resolver; reject early
+      // to avoid submitting a transaction that will definitely revert on-chain.
+      const savedHandle = saved?.handle as string | undefined
+      if (!savedHandle?.startsWith('admin.')) return { error: 'Only org admins can set TXT records' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const walletClient = createWalletClient({
+        account: privateKeyToAccount(ethPrivKey),
+        chain: sepolia,
+        transport: http(SEPOLIA_RPC),
+      })
+      const txHash = await walletClient.writeContract({
+        address: ADDRESSES.WeaveWildcardResolver,
+        abi: RESOLVER_TXT_ABI,
+        functionName: 'setTxt',
+        args: [labelHash as `0x${string}`, key, value],
+      })
+      const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      await pubClient.waitForTransactionReceipt({ hash: txHash })
+      return { ok: true, txHash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── TXT: get a TXT record ─────────────────────────────────────────────────
+  ipcMain.handle('ens:getTxt', async (_e, {
+    labelHash, key,
+  }: { labelHash: string; key: string }) => {
+    try {
+      const pubClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const value = await pubClient.readContract({
+        address: ADDRESSES.WeaveWildcardResolver,
+        abi: RESOLVER_TXT_ABI,
+        functionName: 'getTxt',
+        args: [labelHash as `0x${string}`, key],
+      })
+      return { value }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── Phase 1: Custom role definition ──────────────────────────────────────
+
+  ipcMain.handle('ens:defineRole', async (_e, {
+    orgName, nybble, slug, displayName, description, color,
+  }: { orgName: string; nybble: number; slug: string; displayName: string; description: string; color: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only org admins can define roles' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const hash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'defineOrgRole',
+        args: [orgName, nybble, slug, displayName, description, color],
+      })
+      return { ok: true, txHash: hash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('ens:listOrgRoles', async (_e, { orgName }: { orgName: string }) => {
+    try {
+      const pc = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const roles = await pc.readContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'listOrgRoles',
+        args: [orgName],
+      })
+      return { roles }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('ens:grantNamedRole', async (_e, {
+    orgName, memberName, memberAddress, slug,
+  }: { orgName: string; memberName: string; memberAddress: string; slug: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only org admins can grant roles' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const hash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'grantNamedRole',
+        args: [orgName, memberName, memberAddress as `0x${string}`, slug],
+      })
+      return { ok: true, txHash: hash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('ens:revokeNamedRole', async (_e, {
+    orgName, memberName, memberAddress, slug,
+  }: { orgName: string; memberName: string; memberAddress: string; slug: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only org admins can revoke roles' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const hash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'revokeNamedRole',
+        args: [orgName, memberName, memberAddress as `0x${string}`, slug],
+      })
+      return { ok: true, txHash: hash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── Phase 2: Capabilities + content hash + coin addr ─────────────────────
+
+  ipcMain.handle('ens:setCapabilities', async (_e, {
+    orgName, memberName, channels, canInvite, canExport,
+  }: { orgName: string; memberName: string; channels: string; canInvite: boolean; canExport: boolean }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only org admins can set capabilities' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const hash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'setMemberCapabilities',
+        args: [orgName, memberName, { channels, canInvite, canExport }],
+      })
+      return { ok: true, txHash: hash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('ens:getCapabilities', async (_e, {
+    orgName, memberName,
+  }: { orgName: string; memberName: string }) => {
+    try {
+      const labelHash = keccak256(toHex(`${memberName}.${orgName}`))
+      const pc = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const [channels, canInvite, canExport] = await Promise.all([
+        pc.readContract({ address: ADDRESSES.WeaveWildcardResolver, abi: RESOLVER_TXT_ABI, functionName: 'getTxt', args: [labelHash, 'weave.channels'] }),
+        pc.readContract({ address: ADDRESSES.WeaveWildcardResolver, abi: RESOLVER_TXT_ABI, functionName: 'getTxt', args: [labelHash, 'weave.canInvite'] }),
+        pc.readContract({ address: ADDRESSES.WeaveWildcardResolver, abi: RESOLVER_TXT_ABI, functionName: 'getTxt', args: [labelHash, 'weave.canExport'] }),
+      ])
+      return { channels, canInvite: canInvite === 'true', canExport: canExport === 'true' }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('ens:setContentHash', async (_e, {
+    orgName, memberName, hash,
+  }: { orgName: string; memberName: string; hash: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only org admins can set content hashes' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const txHash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'setMemberContentHash',
+        args: [orgName, memberName, hash as `0x${string}`],
+      })
+      return { ok: true, txHash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('ens:setCoinAddr', async (_e, {
+    orgName, memberName, coinType, addr,
+  }: { orgName: string; memberName: string; coinType: number; addr: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only org admins can set coin addresses' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const txHash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'setMemberCoinAddr',
+        args: [orgName, memberName, BigInt(coinType), addr as `0x${string}`],
+      })
+      return { ok: true, txHash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── Phase 3: Sub-admin management ────────────────────────────────────────
+
+  ipcMain.handle('ens:addSubAdmin', async (_e, {
+    orgName, account,
+  }: { orgName: string; account: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only primary org admin can add sub-admins' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const hash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'addSubAdmin',
+        args: [orgName, account as `0x${string}`],
+      })
+      return { ok: true, txHash: hash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('ens:removeSubAdmin', async (_e, {
+    orgName, account,
+  }: { orgName: string; account: string }) => {
+    try {
+      const saved = loadIdentity() as Record<string, unknown> | null
+      const savedHandle = saved?.handle as string | undefined
+      if (!saved || !savedHandle?.startsWith('admin.')) return { error: 'Only primary org admin can remove sub-admins' }
+      const { ethPrivKey } = deriveKeysFromSeed(saved.seedPhrase as string[])
+      const wallet = createWalletClient({ account: privateKeyToAccount(ethPrivKey), chain: sepolia, transport: http(SEPOLIA_RPC) })
+      const hash = await wallet.writeContract({
+        address: ADDRESSES.WeaveRegistrar,
+        abi: REGISTRAR_EAC_ABI,
+        functionName: 'removeSubAdmin',
+        args: [orgName, account as `0x${string}`],
+      })
+      return { ok: true, txHash: hash }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

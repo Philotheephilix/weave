@@ -3,6 +3,16 @@
  * No mocks — every call goes through contextBridge to ipcMain.
  */
 
+export interface RoleDef {
+  slug: string
+  displayName: string
+  description: string
+  color: string
+  bitmap: string
+  nybble: number
+  active: boolean
+}
+
 export interface StoredChannel {
   id: string
   name: string
@@ -129,6 +139,23 @@ declare global {
         list(orgName: string): Promise<string[]>
         open(args: { orgName: string; peerLabel: string }): Promise<void>
       }
+      ens: {
+        getMemberRole(args: { orgName: string; memberAddress: string }): Promise<{ bitmap: string; isAdmin: boolean; error?: string }>
+        grantAdmin(args: { orgName: string; memberName: string; memberAddress: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        revokeAccess(args: { orgName: string; memberName: string; memberAddress: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        getTxt(args: { labelHash: string; key: string }): Promise<{ value?: string; error?: string }>
+        setTxt(args: { labelHash: string; key: string; value: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        defineRole(args: { orgName: string; nybble: number; slug: string; displayName: string; description: string; color: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        listOrgRoles(args: { orgName: string }): Promise<{ roles?: RoleDef[]; error?: string }>
+        grantNamedRole(args: { orgName: string; memberName: string; memberAddress: string; slug: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        revokeNamedRole(args: { orgName: string; memberName: string; memberAddress: string; slug: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        setCapabilities(args: { orgName: string; memberName: string; channels: string; canInvite: boolean; canExport: boolean }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        getCapabilities(args: { orgName: string; memberName: string }): Promise<{ channels?: string; canInvite?: boolean; canExport?: boolean; error?: string }>
+        setContentHash(args: { orgName: string; memberName: string; hash: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        setCoinAddr(args: { orgName: string; memberName: string; coinType: number; addr: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        addSubAdmin(args: { orgName: string; account: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+        removeSubAdmin(args: { orgName: string; account: string }): Promise<{ ok?: boolean; txHash?: string; error?: string }>
+      }
       on(channel: string, cb: (...args: unknown[]) => void): void
       off(channel: string, cb: (...args: unknown[]) => void): void
       arkiv: {
@@ -144,7 +171,7 @@ declare global {
         }): Promise<number>
         rotateChannelKey(args: {
           org: string; channel: string; members: { label: string; noisePub: string }[]
-        }): Promise<number>
+        }): Promise<{ ok: boolean; version?: number; reason?: string }>
         postMessage(args: {
           org: string; channel: string; keyVersion: number; text: string; expiryDays?: number
         }): Promise<string>
@@ -210,4 +237,102 @@ export function ipcCallOnSignal(
   cb: (payload: { from: string; signal: object }) => void
 ): () => void {
   return window.weave.call.onSignal(cb)
+}
+
+// ── EAC / TXT helpers ─────────────────────────────────────────────────────────
+
+export async function ipcGetMemberRole(
+  orgName: string,
+  memberAddress: string
+): Promise<{ bitmap: string; isAdmin: boolean; error?: string }> {
+  return window.weave.ens.getMemberRole({ orgName, memberAddress })
+}
+
+export async function ipcGrantAdmin(
+  orgName: string,
+  memberName: string,
+  memberAddress: string
+): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.grantAdmin({ orgName, memberName, memberAddress })
+}
+
+export async function ipcRevokeAccess(
+  orgName: string,
+  memberName: string,
+  memberAddress: string
+): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.revokeAccess({ orgName, memberName, memberAddress })
+}
+
+export async function ipcGetTxt(
+  labelHash: string,
+  key: string
+): Promise<string | null> {
+  const res = await window.weave.ens.getTxt({ labelHash, key })
+  return res.error ? null : (res.value ?? null)
+}
+
+export async function ipcSetTxt(
+  labelHash: string,
+  key: string,
+  value: string
+): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.setTxt({ labelHash, key, value })
+}
+
+// ── Phase 1–3: Custom roles, capabilities, sub-admins ────────────────────────
+
+export async function ipcDefineRole(args: {
+  orgName: string; nybble: number; slug: string
+  displayName: string; description: string; color: string
+}): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.defineRole(args)
+}
+
+export async function ipcListOrgRoles(orgName: string): Promise<{ roles?: RoleDef[]; error?: string }> {
+  return window.weave.ens.listOrgRoles({ orgName })
+}
+
+export async function ipcGrantNamedRole(args: {
+  orgName: string; memberName: string; memberAddress: string; slug: string
+}): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.grantNamedRole(args)
+}
+
+export async function ipcRevokeNamedRole(args: {
+  orgName: string; memberName: string; memberAddress: string; slug: string
+}): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.revokeNamedRole(args)
+}
+
+export async function ipcSetCapabilities(args: {
+  orgName: string; memberName: string; channels: string; canInvite: boolean; canExport: boolean
+}): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.setCapabilities(args)
+}
+
+export async function ipcGetCapabilities(orgName: string, memberName: string): Promise<{
+  channels?: string; canInvite?: boolean; canExport?: boolean; error?: string
+}> {
+  return window.weave.ens.getCapabilities({ orgName, memberName })
+}
+
+export async function ipcSetContentHash(args: {
+  orgName: string; memberName: string; hash: string
+}): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.setContentHash(args)
+}
+
+export async function ipcSetCoinAddr(args: {
+  orgName: string; memberName: string; coinType: number; addr: string
+}): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.setCoinAddr(args)
+}
+
+export async function ipcAddSubAdmin(orgName: string, account: string): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.addSubAdmin({ orgName, account })
+}
+
+export async function ipcRemoveSubAdmin(orgName: string, account: string): Promise<{ ok?: boolean; txHash?: string; error?: string }> {
+  return window.weave.ens.removeSubAdmin({ orgName, account })
 }
