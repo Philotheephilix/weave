@@ -355,12 +355,26 @@ export default function WeaveApp() {
       }
     } else {
       const k = chanKey(s.team, s.channel)
-      const list = [...(s.msgs[k] || []), { id: 'm' + Date.now(), who: 'me', time: 'now', text, reactions: [], replies: [] }]
+      const sentAt = Date.now()
+      const tempId = `tmp-${sentAt}`
+      const list = [...(s.msgs[k] || []), { id: tempId, who: 'me', time: 'now', text, reactions: [], replies: [] }]
       setS(prev => ({ ...prev, msgs: { ...prev.msgs, [k]: list }, draft: '' }))
-      // Persist to Arkiv
+      // Persist to Arkiv — only send if we have a channel key (never fallback to version 0)
       if (orgName && s.channel && s.channelKeyVersions) {
-        const keyVersion = (s.channelKeyVersions as Record<string, number>)[chanKey(s.team, s.channel)] ?? 0
-        window.weave?.arkiv?.postMessage?.({ org: orgName, channel: s.channel, keyVersion, text }).catch(() => {})
+        const keyVersion = (s.channelKeyVersions as Record<string, number>)[chanKey(s.team, s.channel)]
+        if (keyVersion !== undefined) {
+          window.weave?.arkiv?.postMessage?.({ org: orgName, channel: s.channel, keyVersion, text })
+            .then(res => {
+              // Replace temp sentinel with real Arkiv ID so dedup works on next poll
+              if (res && typeof res === 'object' && 'id' in res && res.id) {
+                setS(prev => {
+                  const msgs = (prev.msgs[k] || []).map(m => m.id === tempId ? { ...m, id: res.id! } : m)
+                  return { ...prev, msgs: { ...prev.msgs, [k]: msgs } }
+                })
+              }
+            })
+            .catch(() => {})
+        }
       }
     }
   }
@@ -457,27 +471,24 @@ export default function WeaveApp() {
     const isGuest = s.inviteRole === 'Guest'
     const expiry = s.expiry
     setS(prev => ({ ...prev, invited: [], modal: null }))
-    // Add each invitee to the Arkiv channel ACL
-    Promise.allSettled(
-      handles.map(h => window.weave?.arkiv?.addChannelMember?.({ org, channel, member: h, role }))
-    ).catch(() => {})
-
-    // Generate/rotate channel key and distribute to all members (including self)
+    // Add each invitee to the Arkiv channel ACL, then rotate key only if ACL writes succeeded
     if (!isGuest) {
       const myHandle = identity?.handle ?? ''
       const allHandles = [myHandle, ...handles].filter(Boolean)
-      Promise.allSettled(allHandles.map(h => window.weave?.resolve?.(h)))
-        .then(results => {
-          const members = results
-            .map((r, i) => r.status === 'fulfilled' && r.value
-              ? { label: allHandles[i], noisePub: Buffer.from((r.value as { noisePub: Uint8Array }).noisePub).toString('hex') }
-              : null)
-            .filter(Boolean) as { label: string; noisePub: string }[]
-          if (members.length > 0) {
-            window.weave?.arkiv?.rotateChannelKey?.({ org, channel, members }).catch(() => {})
-          }
-        })
-        .catch(() => {})
+      Promise.allSettled(
+        handles.map(h => window.weave?.arkiv?.addChannelMember?.({ org, channel, member: h, role }))
+      ).then(async () => {
+        // Rotate channel key and distribute to all members (including self) after ACL is updated
+        const resolved = await Promise.allSettled(allHandles.map(h => window.weave?.resolve?.(h)))
+        const members = resolved
+          .map((r, i) => r.status === 'fulfilled' && r.value
+            ? { label: allHandles[i], noisePub: Buffer.from((r.value as { noisePub: Uint8Array }).noisePub).toString('hex') }
+            : null)
+          .filter(Boolean) as { label: string; noisePub: string }[]
+        if (members.length > 0) {
+          window.weave?.arkiv?.rotateChannelKey?.({ org, channel, members }).catch(() => {})
+        }
+      }).catch(() => {})
     }
     // For Guest role, resolve each handle and mint an expiring ERC-1155 token on-chain
     if (isGuest) {

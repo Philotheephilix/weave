@@ -40,7 +40,8 @@ export async function startArkivPoller(
 
       if (allMessages.length) {
         dispatch({ type: 'ARKIV_MESSAGES_RECEIVED', payload: { channel, messages: allMessages } })
-        localStorage.setItem(lastFetchKey, String(Date.now()))
+        const maxTs = Math.max(...allMessages.map(m => m.timestamp))
+        localStorage.setItem(lastFetchKey, String(maxTs))
       }
     } catch (err) {
       console.warn(`[arkiv-poller] poll failed for ${orgName}/${channel}:`, err)

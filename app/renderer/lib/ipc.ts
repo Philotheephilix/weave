@@ -91,7 +91,7 @@ declare global {
       }
       org: {
         create: (args: { orgName: string; seedPhrase: string[] }) => Promise<OrgCreateResult>
-        enroll: (args: { orgName: string; memberName: string; memberAddress: string }) => Promise<OrgEnrollResult>
+        enroll: (args: { orgName: string; memberName: string; memberAddress: string; memberSeedPhrase?: string[] }) => Promise<OrgEnrollResult>
         listMembers: (orgName: string) => Promise<OrgMember[]>
         mintGuestToken: (args: { orgLabel: string; guestLabel: string; guestAddress: string; expiryLabel: string }) => Promise<{ txHash?: string; error?: string }>
       }
@@ -171,16 +171,16 @@ declare global {
         }): Promise<number>
         rotateChannelKey(args: {
           org: string; channel: string; members: { label: string; noisePub: string }[]
-        }): Promise<{ ok: boolean; version?: number; reason?: string }>
+        }): Promise<{ ok: true; version: number } | { ok: false; reason: string }>
         postMessage(args: {
           org: string; channel: string; keyVersion: number; text: string; expiryDays?: number
-        }): Promise<string>
+        }): Promise<{ ok: boolean; id?: string; reason?: string }>
         fetchMessages(args: {
           org: string; channel: string; sinceTimestamp: number; keyVersion: number
         }): Promise<{ id: string; sender: string; timestamp: number; text: string }[]>
         postDM(args: {
           org: string; recipientLabel: string; text: string; expiryDays?: number
-        }): Promise<string>
+        }): Promise<{ ok: boolean; id?: string; reason?: string }>
         fetchDMs(args: {
           org: string; peerLabel: string; sinceTimestamp: number
         }): Promise<{ id: string; sender: string; timestamp: number; text: string; mine: boolean }[]>

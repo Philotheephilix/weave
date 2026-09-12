@@ -1388,12 +1388,13 @@ export function registerIpcHandlers(
   ipcMain.handle('ens:listOrgRoles', async (_e, { orgName }: { orgName: string }) => {
     try {
       const pc = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
-      const roles = await pc.readContract({
+      const raw = await pc.readContract({
         address: ADDRESSES.WeaveRegistrar,
         abi: REGISTRAR_EAC_ABI,
         functionName: 'listOrgRoles',
         args: [orgName],
-      })
+      }) as Array<{ slug: string; displayName: string; description: string; color: string; bitmap: bigint; nybble: number; active: boolean }>
+      const roles = raw.map(r => ({ ...r, bitmap: r.bitmap.toString() }))
       return { roles }
     } catch (err: unknown) {
       return { error: err instanceof Error ? err.message : String(err) }

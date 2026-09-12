@@ -374,7 +374,7 @@ export default function OrgAdminPanel({ adminHandle, onEnrolled, onClose, onCall
           <button
             onClick={handleDefineRole}
             disabled={definingRole || !roleSlug.trim() || !roleDisplay.trim()}
-            style={{ marginTop: 12, padding: '8px 18px', background: definingRole || !roleSlug.trim() ? 'rgba(32,30,29,.1)' : '#0088b0', color: definingRole || !roleSlug.trim() ? 'rgba(32,30,29,.4)' : '#fff', border: 'none', borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: definingRole || !roleSlug.trim() ? 'not-allowed' : 'pointer' }}
+            style={{ marginTop: 12, padding: '8px 18px', background: definingRole || !roleSlug.trim() || !roleDisplay.trim() ? 'rgba(32,30,29,.1)' : '#0088b0', color: definingRole || !roleSlug.trim() || !roleDisplay.trim() ? 'rgba(32,30,29,.4)' : '#fff', border: 'none', borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: definingRole || !roleSlug.trim() || !roleDisplay.trim() ? 'not-allowed' : 'pointer' }}
           >
             {definingRole ? 'Defining…' : 'Define Role'}
           </button>
@@ -404,6 +404,20 @@ export default function OrgAdminPanel({ adminHandle, onEnrolled, onClose, onCall
               style={{ padding: '8px 16px', background: addingSubAdmin || !subAdminAddress.trim() ? 'rgba(32,30,29,.1)' : '#006786', color: addingSubAdmin || !subAdminAddress.trim() ? 'rgba(32,30,29,.4)' : '#fff', border: 'none', borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: addingSubAdmin || !subAdminAddress.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
             >
               {addingSubAdmin ? 'Adding…' : 'Add Sub-Admin'}
+            </button>
+            <button
+              onClick={async () => {
+                if (!orgName || !subAdminAddress.trim()) return
+                setAddingSubAdmin(true)
+                const res = await ipcRemoveSubAdmin(orgName, subAdminAddress.trim())
+                setAddingSubAdmin(false)
+                setSubAdminMsg(res.error ? `Error: ${res.error}` : 'Sub-admin removed.')
+                if (!res.error) setSubAdminAddress('')
+              }}
+              disabled={addingSubAdmin || !subAdminAddress.trim()}
+              style={{ padding: '8px 16px', background: addingSubAdmin || !subAdminAddress.trim() ? 'rgba(32,30,29,.1)' : 'rgba(170,11,86,.08)', color: addingSubAdmin || !subAdminAddress.trim() ? 'rgba(32,30,29,.4)' : '#aa0b56', border: '1px solid rgba(170,11,86,.25)', borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: addingSubAdmin || !subAdminAddress.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Remove
             </button>
           </div>
           {subAdminMsg && (
