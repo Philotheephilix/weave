@@ -6,127 +6,143 @@
   <title>Weave — Private collaboration for teams that mean it</title>
   <meta name="description" content="Full Microsoft Teams feature parity. Zero surveillance surface. No relay sees your traffic. No vendor owns your identity." />
   <style>
-    :root{--ink:#1d1c1d;--muted:#696969;--purple:#611f69;--deep:#3f144b;--lavender:#f7f1fa;--line:#ded8df;--white:#fff;--teal:#0b8f85;--orange:#ecb22e}*{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--white)}body{margin:0;background:var(--white);color:var(--ink);font-family:Arial,Helvetica,sans-serif}a{color:inherit;text-decoration:none}button{font:inherit}
-    .announcement{min-height:52px;padding:14px 56px;display:flex;justify-content:center;align-items:center;gap:9px;background:var(--lavender);color:var(--purple);font-size:14px;position:relative}
+    :root{
+      --ink:#1a2f3d;
+      --muted:#5a7a8a;
+      --blue:#1a6b8a;
+      --deep:#0d3a52;
+      --sky:#e8f4f8;
+      --line:#c8e0ea;
+      --white:#fff;
+      --cyan:#3aafc8;
+      --ice:#c8e8f4;
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--white)}body{margin:0;background:var(--white);color:var(--ink);font-family:Arial,Helvetica,sans-serif}a{color:inherit;text-decoration:none}button{font:inherit}
+    .announcement{min-height:52px;padding:14px 56px;display:flex;justify-content:center;align-items:center;gap:9px;background:var(--sky);color:var(--blue);font-size:14px;position:relative}
     .announcement a,.text-link,.resource-card a{display:inline-flex;align-items:center;gap:6px;text-decoration:underline;text-underline-offset:4px;font-weight:700}
     .dismiss{position:absolute;right:28px;border:0;background:transparent;color:var(--ink);font-size:28px;font-weight:200;line-height:1;cursor:pointer}
     .site-header{max-width:1180px;min-height:76px;padding:13px 0;margin:0 auto;display:flex;align-items:center;gap:34px}
     .brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;letter-spacing:-1px}
     .brand img{height:32px;display:block}
     .desktop-nav{display:flex;align-items:center;gap:27px;font-size:14px;font-weight:600;flex:1}
-    .desktop-nav a:hover,.signin:hover{color:var(--purple)}
+    .desktop-nav a:hover,.signin:hover{color:var(--blue)}
     .desktop-nav span{font-size:16px}
     .header-actions{display:flex;align-items:center;gap:20px;font-size:14px;font-weight:700;text-transform:uppercase}
     .signin{text-transform:none;font-weight:600}
     .search{padding:0;border:0;background:none;cursor:pointer}
     .icon{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2}
     .arrow-icon{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6}
-    .play-icon{font-size:11px}
     .button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:43px;padding:0 20px;border-radius:4px;letter-spacing:.2px;font-size:13px;font-weight:700;text-transform:uppercase;transition:transform .2s,box-shadow .2s,background .2s}
-    .button:hover{transform:translateY(-2px);box-shadow:0 4px 12px #1d1c1d1c}
-    .button-primary{color:var(--white);background:var(--purple)}
-    .button-primary:hover{background:#4e1855}
-    .button-outline{border:1.5px solid var(--purple);color:var(--purple);background:var(--white)}
+    .button:hover{transform:translateY(-2px);box-shadow:0 4px 12px #1a2f3d1c}
+    .button-primary{color:var(--white);background:var(--blue)}
+    .button-primary:hover{background:#145a75}
+    .button-outline{border:1.5px solid var(--blue);color:var(--blue);background:var(--white)}
     .button-large{min-width:178px;min-height:56px}
+    /* Mac download button */
+    .btn-mac{display:inline-flex;align-items:center;gap:10px;min-height:56px;padding:0 28px;border-radius:4px;font-size:14px;font-weight:700;background:var(--deep);color:#fff;transition:transform .2s,box-shadow .2s,background .2s;text-decoration:none}
+    .btn-mac:hover{background:#0a2e42;transform:translateY(-2px);box-shadow:0 6px 18px #0d3a5240}
+    .btn-mac svg{flex-shrink:0}
+    .btn-mac-sub{font-size:10px;font-weight:400;opacity:.7;display:block;text-align:left;text-transform:none;letter-spacing:0}
+    .btn-mac-main{font-size:14px;font-weight:700;display:block;text-transform:none}
     .hero{padding:57px 20px 0;text-align:center;overflow:hidden}
-    .eyebrow{color:var(--purple);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.3px;margin:0 0 18px}
+    .eyebrow{color:var(--blue);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.3px;margin:0 0 18px}
     .hero h1{max-width:790px;margin:0 auto;color:#000;font-size:clamp(46px,6vw,72px);line-height:.98;letter-spacing:-3.8px;font-weight:800}
     .hero h1 em{display:block;font-style:normal}
     .hero-copy{margin:22px auto 25px;font-size:18px;line-height:1.5}
-    .hero-actions{display:flex;justify-content:center;gap:9px}
+    .hero-actions{display:flex;justify-content:center;gap:12px;align-items:center;flex-wrap:wrap}
     .trusted{display:flex;flex-direction:column;align-items:center;gap:13px;margin:32px auto 39px;color:var(--muted);font-size:12px}
-    .company-row{display:flex;align-items:center;justify-content:center;gap:34px;color:#656565;font-size:16px;font-weight:700}
-    .workspace-window{max-width:800px;min-height:380px;margin:0 auto;border-radius:9px 9px 0 0;overflow:hidden;background:var(--white);box-shadow:0 18px 55px #1d1c1d20;border:1px solid #d9cbe0;text-align:left}
-    .window-top{height:39px;background:var(--purple);display:flex;align-items:center;gap:6px;padding:0 12px}
+    .company-row{display:flex;align-items:center;justify-content:center;gap:34px;color:#4a6a7a;font-size:16px;font-weight:700}
+    .workspace-window{max-width:800px;min-height:380px;margin:0 auto;border-radius:9px 9px 0 0;overflow:hidden;background:var(--white);box-shadow:0 18px 55px #1a2f3d20;border:1px solid #b8d8e8;text-align:left}
+    .window-top{height:39px;background:var(--blue);display:flex;align-items:center;gap:6px;padding:0 12px}
     .window-top>span{width:11px;height:11px;background:#f9a647;border-radius:50%}
     .window-top>span:nth-child(2){background:#f8cc3b}
     .window-top>span:nth-child(3){background:#4bbf6b}
-    .search-bar{height:27px;width:365px;margin-left:auto;margin-right:42px;border-radius:6px;background:#7c4a84;color:#eee;font-size:11px;display:flex;align-items:center;gap:8px;padding:0 12px}
+    .search-bar{height:27px;width:365px;margin-left:auto;margin-right:42px;border-radius:6px;background:#2a7b9b;color:#e8f4f8;font-size:11px;display:flex;align-items:center;gap:8px;padding:0 12px}
     .search-bar .icon{width:15px;height:15px}
     .avatar{width:25px;height:25px;border:1px solid #fff;border-radius:6px;color:#fff;display:grid;place-items:center;font-size:11px}
     .workspace-body{display:flex;min-height:341px}
-    .workspace-sidebar{width:190px;flex:none;padding:20px 12px;background:var(--deep);color:#ead9ee;font-size:12px}
+    .workspace-sidebar{width:190px;flex:none;padding:20px 12px;background:var(--deep);color:#c8e8f4;font-size:12px}
     .workspace-name{color:white;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin-bottom:22px}
     .workspace-name span:last-child{margin-left:auto}
-    .workspace-logo{display:grid;place-items:center;width:28px;height:28px;background:#23a8ad;border-radius:7px}
+    .workspace-logo{display:grid;place-items:center;width:28px;height:28px;background:#3aafc8;border-radius:7px}
     .workspace-sidebar p{margin:14px 0}
-    .sidebar-label{color:#bfa7c4;text-transform:uppercase;font-size:10px;letter-spacing:1px;margin-top:26px!important}
+    .sidebar-label{color:#8abcd4;text-transform:uppercase;font-size:10px;letter-spacing:1px;margin-top:26px!important}
     .channel{padding:6px 8px;margin:3px 0!important;border-radius:3px}
-    .channel.active{background:#6a3272;color:#fff}
+    .channel.active{background:#1a6b8a;color:#fff}
     .channel-view{flex:1;background:#fff}
-    .channel-header{height:57px;padding:0 20px;border-bottom:1px solid #e6e3e6;display:flex;align-items:center;justify-content:space-between;font-size:15px}
+    .channel-header{height:57px;padding:0 20px;border-bottom:1px solid #d8edf4;display:flex;align-items:center;justify-content:space-between;font-size:15px}
     .channel-header span{color:var(--muted);font-size:11px}
-    .message{display:flex;gap:12px;padding:20px 20px 0;color:#38343a;font-size:12px}
+    .message{display:flex;gap:12px;padding:20px 20px 0;color:#2a3a4a;font-size:12px}
     .person{width:32px;height:32px;flex:none;border-radius:7px;display:grid;place-items:center;color:#fff;font-weight:700}
     .person.orange{background:#ee8a3b}
-    .person.purple{background:#8d56a3}
-    .person.teal{background:#0b8f85}
+    .person.blue{background:#1a6b8a}
+    .person.cyan{background:#3aafc8}
     .message p{margin:6px 0 11px;line-height:1.5}
-    .message small,.file-card small{display:block;color:#888;font-size:10px;font-weight:400}
-    .file-card,.bot-note{padding:11px;border:1px solid #ded8df;border-radius:5px;background:#faf8fb}
+    .message small,.file-card small{display:block;color:#7a9aaa;font-size:10px;font-weight:400}
+    .file-card,.bot-note{padding:11px;border:1px solid #c8dde8;border-radius:5px;background:#f4f9fb}
     .file-card{display:flex;gap:8px;align-items:center;width:240px}
-    .file-icon{font-size:20px;color:var(--purple)}
-    .bot-note{border-left:3px solid #0b8f85;line-height:1.5}
-    .onion-badge{display:inline-block;background:#3f144b;color:#ead9ee;font-size:9px;padding:2px 7px;border-radius:10px;margin-top:6px;letter-spacing:.5px}
-    .ai-section{padding:120px 20px 128px;text-align:center;background:var(--lavender)}
+    .file-icon{font-size:20px;color:var(--blue)}
+    .bot-note{border-left:3px solid #3aafc8;line-height:1.5}
+    .onion-badge{display:inline-block;background:#0d3a52;color:#c8e8f4;font-size:9px;padding:2px 7px;border-radius:10px;margin-top:6px;letter-spacing:.5px}
+    .ai-section{padding:120px 20px 128px;text-align:center;background:var(--sky)}
     .section-wrap{max-width:1100px;margin:auto}
     .ai-section h2,.split-copy h2,.stats-section h2,.resources h2,.pricing h2{max-width:700px;margin:0 auto 18px;font-size:clamp(34px,4vw,52px);line-height:1.05;letter-spacing:-2.3px}
-    .ai-section>.section-wrap>p:not(.eyebrow){max-width:680px;margin:0 auto;color:#4d4650;font-size:17px;line-height:1.6}
+    .ai-section>.section-wrap>p:not(.eyebrow){max-width:680px;margin:0 auto;color:#3a5a6a;font-size:17px;line-height:1.6}
     .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;text-align:left;margin-top:64px}
-    .feature-grid article{padding:25px 0;border-top:1px solid #c8bacb}
-    .feature-number{font-size:12px;color:var(--purple);font-weight:700}
+    .feature-grid article{padding:25px 0;border-top:1px solid #a8ccd8}
+    .feature-number{font-size:12px;color:var(--blue);font-weight:700}
     .feature-grid h3{font-size:22px;letter-spacing:-.7px;margin:20px 0 10px}
-    .feature-grid p{color:#4d4650;font-size:15px;line-height:1.55;margin:0 0 20px}
-    .feature-grid a{color:var(--purple);font-size:14px;font-weight:700;display:inline-flex;gap:6px;align-items:center}
+    .feature-grid p{color:#3a5a6a;font-size:15px;line-height:1.55;margin:0 0 20px}
+    .feature-grid a{color:var(--blue);font-size:14px;font-weight:700;display:inline-flex;gap:6px;align-items:center}
     .split-section{max-width:1180px;margin:auto;padding:130px 40px;display:flex;align-items:center;gap:100px}
     .split-section.reverse{flex-direction:row-reverse;background:#fff}
     .split-art{width:50%;min-height:390px;position:relative;display:grid;place-items:center}
-    .art-collab{background:#e7f0f5;border-radius:50% 42% 48% 54%;transform:rotate(-4deg)}
-    .art-card{position:absolute;background:#fff;border-radius:6px;box-shadow:0 10px 30px #1d1c1d18;padding:18px;font-size:14px;transform:rotate(4deg)}
+    .art-collab{background:#daeef5;border-radius:50% 42% 48% 54%;transform:rotate(-4deg)}
+    .art-card{position:absolute;background:#fff;border-radius:6px;box-shadow:0 10px 30px #1a2f3d18;padding:18px;font-size:14px;transform:rotate(4deg)}
     .card-one{top:54px;left:12%;width:230px}
-    .card-one b{color:#0b8f85;float:right}
+    .card-one b{color:#3aafc8;float:right}
     .card-two{right:8%;top:145px;width:200px}
-    .card-two strong{display:block;color:var(--teal);font-size:11px;margin-top:12px}
-    .card-three{bottom:54px;left:22%;width:230px;color:var(--purple)}
-    .art-orbit{width:100px;height:100px;border-radius:50%;display:grid;place-items:center;background:var(--purple);color:#fff;font-size:44px;transform:rotate(4deg)}
+    .card-two strong{display:block;color:var(--cyan);font-size:11px;margin-top:12px}
+    .card-three{bottom:54px;left:22%;width:230px;color:var(--blue)}
+    .art-orbit{width:100px;height:100px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#fff;font-size:44px;transform:rotate(4deg)}
     .split-copy{flex:1}
     .split-copy .eyebrow{text-align:left}
     .split-copy h2{margin-left:0}
-    .split-copy>p:not(.eyebrow){color:#4d4650;font-size:17px;line-height:1.6;max-width:480px}
-    .text-link{color:var(--purple);font-size:14px;margin-top:12px}
-    .art-automation{background:#f7f1fa;border-radius:12px;padding:42px 60px;display:flex;flex-direction:column;align-items:center;gap:0;transform:rotate(2deg)}
-    .automation-title{align-self:stretch;padding-bottom:23px;border-bottom:1px solid #d7c9d9;font-weight:700}
-    .flow-node{width:100%;max-width:280px;background:#fff;border:1px solid #d7c9d9;border-radius:6px;padding:16px;margin-top:26px;box-shadow:0 6px 18px #1d1c1d12;font-size:13px}
-    .accent-node{border-left:4px solid #0b8f85}
-    .flow-line{height:24px;border-left:2px solid #b798bd}
-    .testimonial{padding:120px 25px;background:var(--purple);color:#fff;text-align:center}
-    .quote-mark{font-family:Georgia,serif;font-size:100px;height:70px;line-height:1;color:#c8a8ce}
+    .split-copy>p:not(.eyebrow){color:#3a5a6a;font-size:17px;line-height:1.6;max-width:480px}
+    .text-link{color:var(--blue);font-size:14px;margin-top:12px}
+    .art-automation{background:#e8f4f8;border-radius:12px;padding:42px 60px;display:flex;flex-direction:column;align-items:center;gap:0;transform:rotate(2deg)}
+    .automation-title{align-self:stretch;padding-bottom:23px;border-bottom:1px solid #a8ccd8;font-weight:700}
+    .flow-node{width:100%;max-width:280px;background:#fff;border:1px solid #a8ccd8;border-radius:6px;padding:16px;margin-top:26px;box-shadow:0 6px 18px #1a2f3d12;font-size:13px}
+    .accent-node{border-left:4px solid #3aafc8}
+    .flow-line{height:24px;border-left:2px solid #7ab8cc}
+    .testimonial{padding:120px 25px;background:var(--deep);color:#fff;text-align:center}
+    .quote-mark{font-family:Georgia,serif;font-size:100px;height:70px;line-height:1;color:#5ab8cc}
     .testimonial blockquote{max-width:850px;margin:0 auto 28px;font-size:clamp(28px,4vw,47px);line-height:1.15;letter-spacing:-1.6px}
-    .testimonial p{color:#eee;font-size:14px;line-height:1.6}
+    .testimonial p{color:#a8d4e4;font-size:14px;line-height:1.6}
     .stats-section{padding:118px 30px;text-align:center}
     .stats-section h2{margin-bottom:58px}
     .stats-grid{max-width:1000px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
     .stats-grid div{padding:22px;border-top:1px solid var(--line)}
-    .stats-grid strong{display:block;color:var(--purple);font-size:48px;letter-spacing:-2px}
+    .stats-grid strong{display:block;color:var(--blue);font-size:48px;letter-spacing:-2px}
     .stats-grid span{display:block;max-width:180px;margin:12px auto 0;color:var(--muted);font-size:14px;line-height:1.45}
-    .resources{padding:110px 40px;background:#f6f6f6}
+    .resources{padding:110px 40px;background:#f2f8fb}
     .section-heading{max-width:1100px;margin:0 auto 45px;display:flex;justify-content:space-between;align-items:end}
     .section-heading h2{text-align:left;margin:0}
     .resource-grid{max-width:1100px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-    .resource-card{min-height:360px;padding:25px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;background:#fff;box-shadow:0 4px 18px #1d1c1d0c}
+    .resource-card{min-height:360px;padding:25px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;background:#fff;box-shadow:0 4px 18px #1a2f3d0c}
     .resource-card p{font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 auto}
     .resource-card h3{font-size:24px;line-height:1.15;letter-spacing:-.7px;margin:0 0 25px}
     .resource-card a{font-size:13px}
-    .purple-card{background:var(--purple);color:#fff}
-    .purple-card a{color:#fff}
+    .blue-card{background:var(--blue);color:#fff}
+    .blue-card a{color:#c8e8f4}
     .dark-card{background:var(--deep);color:#fff}
-    .dark-card a{color:#fff}
+    .dark-card a{color:#a8d4e4}
     .image-card{background:#fff}
-    .resource-visual{height:145px;width:100%;background:#e4f0f4;color:var(--teal);font-size:105px;font-weight:800;line-height:1;text-align:center;padding-top:20px;margin-bottom:auto;position:relative}
-    .resource-visual span{font-size:35px;color:#e01e5a;position:absolute;right:35px;top:26px}
-    .pricing{padding:120px 25px;text-align:center;background:var(--lavender)}
-    .pricing>p:not(.eyebrow){color:#4d4650;font-size:17px}
-    .pricing-actions{display:flex;justify-content:center;gap:10px;margin-top:28px}
+    .resource-visual{height:145px;width:100%;background:#daeef5;color:var(--cyan);font-size:105px;font-weight:800;line-height:1;text-align:center;padding-top:20px;margin-bottom:auto;position:relative}
+    .resource-visual span{font-size:35px;color:#e05a1e;position:absolute;right:35px;top:26px}
+    .pricing{padding:120px 25px;text-align:center;background:var(--sky)}
+    .pricing>p:not(.eyebrow){color:#3a5a6a;font-size:17px}
+    .pricing-actions{display:flex;justify-content:center;gap:10px;margin-top:28px;flex-wrap:wrap;align-items:center}
     footer{padding:65px 40px 28px;background:#fff;border-top:1px solid var(--line)}
     .footer-brand{display:flex;align-items:center;gap:10px}
     .footer-brand img{height:28px}
@@ -134,16 +150,16 @@
     .footer-links div{display:flex;flex-direction:column;gap:13px}
     .footer-links b{font-size:11px;letter-spacing:1px}
     .footer-links a{font-size:13px;color:var(--muted)}
-    .footer-links a:hover{color:var(--purple)}
+    .footer-links a:hover{color:var(--blue)}
     .footer-bottom{max-width:1100px;margin:auto;border-top:1px solid var(--line);padding-top:22px;display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
     @media(max-width:900px){.site-header{padding:13px 22px;gap:18px}.desktop-nav{gap:13px}.header-actions{gap:10px}.header-actions .button-outline,.signin{display:none}.split-section,.split-section.reverse{padding:90px 25px;gap:45px}.split-art{min-height:320px}.resource-grid{grid-template-columns:1fr 1fr}.resource-card:last-child{grid-column:span 2}.footer-links{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:640px){.announcement{padding:13px 42px 13px 17px;text-align:center;font-size:12px}.dismiss{right:12px}.site-header{min-height:68px}.desktop-nav{display:none}.header-actions{margin-left:auto}.header-actions .button{min-height:38px;padding:0 12px;font-size:11px}.hero{padding-top:42px}.hero h1{font-size:45px;letter-spacing:-2.7px}.hero-copy{font-size:16px}.hero-actions,.pricing-actions{flex-direction:column;align-items:stretch;max-width:280px;margin:0 auto}.button-large{min-height:50px}.company-row{flex-wrap:wrap;gap:18px 24px;max-width:310px}.workspace-window{min-height:330px;margin-left:-10px;margin-right:-10px}.workspace-sidebar{width:115px;padding:14px 8px}.workspace-name{font-size:12px}.channel-header{padding:0 12px}.channel-header span{display:none}.message{padding:15px 12px 0}.search-bar{width:150px;margin-right:5px}.ai-section{padding:80px 20px}.feature-grid,.resource-grid{grid-template-columns:1fr;gap:0}.stats-grid{grid-template-columns:repeat(2,1fr)}.feature-grid article{padding:22px 0}.split-section,.split-section.reverse{flex-direction:column;padding:75px 22px;gap:40px}.split-art{width:100%;min-height:290px}.split-copy{width:100%}.resources{padding:75px 22px}.section-heading{display:block}.section-heading .text-link{margin-top:22px}.resource-grid{gap:16px}.resource-card,.resource-card:last-child{grid-column:auto;min-height:300px}.pricing{padding:80px 22px}.footer-links{margin:45px 0;grid-template-columns:1fr 1fr;gap:32px 15px}.footer-bottom{display:block;line-height:1.8}.footer-bottom span{display:block;margin-bottom:8px}}
+    @media(max-width:640px){.announcement{padding:13px 42px 13px 17px;text-align:center;font-size:12px}.dismiss{right:12px}.site-header{min-height:68px}.desktop-nav{display:none}.header-actions{margin-left:auto}.header-actions .button{min-height:38px;padding:0 12px;font-size:11px}.hero{padding-top:42px}.hero h1{font-size:45px;letter-spacing:-2.7px}.hero-copy{font-size:16px}.hero-actions,.pricing-actions{flex-direction:column;align-items:stretch;max-width:300px;margin:0 auto}.button-large,.btn-mac{min-height:50px;width:100%;justify-content:center}.company-row{flex-wrap:wrap;gap:18px 24px;max-width:310px}.workspace-window{min-height:330px;margin-left:-10px;margin-right:-10px}.workspace-sidebar{width:115px;padding:14px 8px}.workspace-name{font-size:12px}.channel-header{padding:0 12px}.channel-header span{display:none}.message{padding:15px 12px 0}.search-bar{width:150px;margin-right:5px}.ai-section{padding:80px 20px}.feature-grid,.resource-grid{grid-template-columns:1fr;gap:0}.stats-grid{grid-template-columns:repeat(2,1fr)}.feature-grid article{padding:22px 0}.split-section,.split-section.reverse{flex-direction:column;padding:75px 22px;gap:40px}.split-art{width:100%;min-height:290px}.split-copy{width:100%}.resources{padding:75px 22px}.section-heading{display:block}.section-heading .text-link{margin-top:22px}.resource-grid{gap:16px}.resource-card,.resource-card:last-child{grid-column:auto;min-height:300px}.pricing{padding:80px 22px}.footer-links{margin:45px 0;grid-template-columns:1fr 1fr;gap:32px 15px}.footer-bottom{display:block;line-height:1.8}.footer-bottom span{display:block;margin-bottom:8px}}
   </style>
 </head>
 <body>
   <div class="announcement">
     <span>Weave is open source — self-host in minutes, own your data forever.</span>
-    <a href="#learn">Read the docs <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5" /></svg></a>
+    <a href="https://github.com/Philotheephilix/weave">View on GitHub <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5" /></svg></a>
     <button aria-label="Dismiss announcement" class="dismiss" onclick="this.parentElement.style.display='none'">×</button>
   </div>
 
@@ -162,19 +178,26 @@
       <button class="search" aria-label="Search">
         <svg class="icon" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
       </button>
-      <a class="signin" href="#signin">Sign in</a>
-      <a class="button button-outline" href="#demo">Request a demo</a>
-      <a class="button button-primary" href="#started">Get started</a>
+      <a class="signin" href="https://github.com/Philotheephilix/weave">GitHub</a>
+      <a class="button button-primary" href="https://github.com/Philotheephilix/weave/releases/tag/v0.1.0">Download for Mac</a>
     </div>
   </header>
 
   <section class="hero" id="top">
     <p class="eyebrow">Privacy-first collaboration for modern teams</p>
     <h1>Your team. Your data. <em>Nobody else's.</em></h1>
-    <p class="hero-copy">Weave gives your org full Microsoft Teams feature parity with zero surveillance surface. No relay sees your traffic. No vendor owns your identity.</p>
+    <p class="hero-copy">Weave gives your org full Microsoft Teams feature parity with zero surveillance surface. No relay sees your traffic. No vendor owns your identity. Depends on <strong>0 servers</strong>.</p>
     <div class="hero-actions">
-      <a class="button button-primary button-large" href="#started">Get started</a>
-      <a class="button button-outline button-large" href="#learn">Read the docs <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+      <a class="btn-mac" href="https://github.com/Philotheephilix/weave/releases/download/v0.1.0/Weave-0.1.0-arm64.dmg">
+        <svg width="22" height="27" viewBox="0 0 814 1000" fill="currentColor"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.5 133.4-317.5 264.6-317.5 70.1 0 128.9 46.4 172.5 46.4 41.3 0 106.1-49 193.2-49 31.3 0 108.2 2.6 175.3 74.6zm-160-223.2c37.3-44.5 64.1-106.4 64.1-168.4 0-8.7-.6-17.4-2-25.5-60.7 2.3-132.4 40.8-175.3 90.5-34.1 38-66.7 99.9-66.7 162.5 0 9.3 1.3 18.6 2 21.9 3.9.6 10.4 1.3 16.8 1.3 54.2 0 121.3-36.1 161.1-82.3z"/></svg>
+        <span>
+          <span class="btn-mac-sub">Download for</span>
+          <span class="btn-mac-main">Mac (Apple Silicon)</span>
+        </span>
+      </a>
+      <a class="button button-outline button-large" href="https://github.com/Philotheephilix/weave/releases/download/v0.1.0/Weave-0.1.0.dmg">
+        Intel Mac
+      </a>
     </div>
     <div class="trusted">
       <span>Built for teams that need real privacy</span>
@@ -226,11 +249,11 @@
             </div>
           </div>
           <div class="message">
-            <div class="person teal">B</div>
+            <div class="person cyan">B</div>
             <div>
               <b>bob.acme.weave.eth <small>10:44 AM</small></b>
-              <p>Confirmed on my end. Our channel key rotated after Charlie left — all new messages are forward-secret.</p>
-              <div class="bot-note"><strong>🧅 Connected via Tor onion-to-onion</strong><br />No IP exposed · Noise_XX E2E · Key version 3</div>
+              <p>Confirmed. Channel key rotated after Charlie left — all new messages are forward-secret.</p>
+              <div class="bot-note"><strong>🧅 Connected via Tor onion-to-onion</strong><br />No IP exposed · Noise_XX E2E · Key version 3 · 0 servers involved</div>
               <span class="onion-badge">🔑 alice.acme.weave.eth · ENSv2 verified</span>
             </div>
           </div>
@@ -249,19 +272,19 @@
           <span class="feature-number">01</span>
           <h3>On-chain identity</h3>
           <p>Your name is an ENSv2 subname — <code>alice.acme.weave.eth</code>. It stores your noise pubkey, onion address, and stealth keys. No account to delete, no data to request.</p>
-          <a href="#learn">Learn about ENS identity <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+          <a href="https://github.com/Philotheephilix/weave#readme">Learn about ENS identity <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
         </article>
         <article>
           <span class="feature-number">02</span>
           <h3>Zero-knowledge transport</h3>
           <p>Both endpoints are Tor v3 onion services. No STUN, no TURN, no ICE relay. Noise_XX encrypts every byte. The communication graph is mathematically destroyed.</p>
-          <a href="#learn">Explore the protocol <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+          <a href="https://github.com/Philotheephilix/weave#readme">Explore the protocol <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
         </article>
         <article>
           <span class="feature-number">03</span>
           <h3>On-chain permissions</h3>
           <p>Role-based access via a 256-bit EAC bitmap on Ethereum. Grant, revoke, add sub-admins — all signed transactions. No Slack admin panel, no AWS IAM, no vendor lock-in.</p>
-          <a href="#learn">See the role system <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+          <a href="https://github.com/Philotheephilix/weave#readme">See the role system <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
         </article>
       </div>
     </div>
@@ -278,7 +301,7 @@
       <p class="eyebrow">Collaboration that leaves no trace</p>
       <h2>Work happens in channels.</h2>
       <p>Weave brings the right people and context together — in encrypted channels organized by project, topic, or team. Messages stored on Arkiv, encrypted client-side before upload. Keys rotate on membership change.</p>
-      <a class="text-link" href="#started">Bring your team together <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+      <a class="text-link" href="https://github.com/Philotheephilix/weave/releases/tag/v0.1.0">Download and try it <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
     </div>
   </section>
 
@@ -295,7 +318,7 @@
       <p class="eyebrow">Permissions without a vendor</p>
       <h2>Roles that no vendor can revoke.</h2>
       <p>Grant REGISTRAR, MODERATOR, PUBLISHER or custom org roles. Every permission change is a signed Ethereum transaction, auditable on-chain forever. No Slack admin panel, no AWS IAM — just math.</p>
-      <a class="text-link" href="#learn">Explore the role system <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+      <a class="text-link" href="https://github.com/Philotheephilix/weave#readme">Explore the role system <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
     </div>
   </section>
 
@@ -334,24 +357,24 @@
         <p class="eyebrow">Built for every team that means it</p>
         <h2>See Weave in action.</h2>
       </div>
-      <a class="text-link" href="#learn">View all resources <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+      <a class="text-link" href="https://github.com/Philotheephilix/weave#readme">View all docs <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
     </div>
     <div class="resource-grid">
-      <article class="resource-card purple-card">
+      <article class="resource-card blue-card">
         <p>Incident</p>
         <h3>SpartacusDAO: $35M frozen after lawsuit served via Discord</h3>
-        <a href="#learn">Read the case <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+        <a href="https://github.com/Philotheephilix/weave#readme">Read the case <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
       </article>
       <article class="resource-card image-card">
         <div class="resource-visual">🧅<span>🔐</span></div>
         <p>Protocol</p>
         <h3>How Tor + Noise_XX destroys the communication graph</h3>
-        <a href="#learn">Read the guide <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+        <a href="https://github.com/Philotheephilix/weave#readme">Read the guide <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
       </article>
       <article class="resource-card dark-card">
         <p>Architecture</p>
         <h3>ENSv2 identity, EAC roles, and Arkiv storage — how it fits together</h3>
-        <a href="#learn">Explore the architecture <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
+        <a href="https://github.com/Philotheephilix/weave#readme">Explore the architecture <svg class="arrow-icon" viewBox="0 0 20 20"><path d="M3 10h13M11 5l5 5-5 5"/></svg></a>
       </article>
     </div>
   </section>
@@ -359,10 +382,15 @@
   <section class="pricing" id="pricing">
     <p class="eyebrow">Open source · Self-hostable · Free forever</p>
     <h2>Start with Weave today.</h2>
-    <p>Deploy your own node in minutes. No license fee. No per-seat charge. No vendor with access to your data. Enterprise support available for organizations that need it.</p>
+    <p>Deploy your own node in minutes. No license fee. No per-seat charge. No vendor with access to your data.</p>
     <div class="pricing-actions">
-      <a class="button button-primary button-large" href="#started">Get started</a>
-      <a class="button button-outline button-large" href="#demo">Talk to us</a>
+      <a class="btn-mac" href="https://github.com/Philotheephilix/weave/releases/download/v0.1.0/Weave-0.1.0-arm64.dmg">
+        <svg width="20" height="24" viewBox="0 0 814 1000" fill="currentColor"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.5 133.4-317.5 264.6-317.5 70.1 0 128.9 46.4 172.5 46.4 41.3 0 106.1-49 193.2-49 31.3 0 108.2 2.6 175.3 74.6zm-160-223.2c37.3-44.5 64.1-106.4 64.1-168.4 0-8.7-.6-17.4-2-25.5-60.7 2.3-132.4 40.8-175.3 90.5-34.1 38-66.7 99.9-66.7 162.5 0 9.3 1.3 18.6 2 21.9 3.9.6 10.4 1.3 16.8 1.3 54.2 0 121.3-36.1 161.1-82.3z"/></svg>
+        <span>
+          <span class="btn-mac-sub">Download free for</span>
+          <span class="btn-mac-main">Mac (Apple Silicon)</span>
+        </span>
+      </a>
     </div>
   </section>
 
@@ -383,7 +411,7 @@
         <a href="#features">Channels</a>
         <a href="#enterprise">Role system</a>
         <a href="#solutions">Arkiv storage</a>
-        <a href="#pricing">Pricing</a>
+        <a href="https://github.com/Philotheephilix/weave/releases/tag/v0.1.0">Download</a>
       </div>
       <div>
         <b>PROTOCOL</b>
@@ -394,10 +422,10 @@
       </div>
       <div>
         <b>COMMUNITY</b>
-        <a href="#learn">GitHub</a>
-        <a href="#learn">Docs</a>
-        <a href="#learn">Discord</a>
-        <a href="#learn">Contact</a>
+        <a href="https://github.com/Philotheephilix/weave">GitHub</a>
+        <a href="https://github.com/Philotheephilix/weave#readme">Docs</a>
+        <a href="https://github.com/Philotheephilix/weave/releases">Releases</a>
+        <a href="https://github.com/Philotheephilix/weave/issues">Contact</a>
       </div>
     </div>
     <div class="footer-bottom">
