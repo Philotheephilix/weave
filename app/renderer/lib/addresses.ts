@@ -4,10 +4,10 @@
  */
 
 export const ADDRESSES = {
-  WeavePermissionedRegistry: '0x5dCC3E88Ff81Cf7D12B127Da9b3623FFDe616283' as `0x${string}`,
-  WeaveWildcardResolver:     '0x7803f87Feee40E03D6049aA935134784E8BD8b08' as `0x${string}`,
-  WeaveRegistrar:            '0xF9F3aC24335Fc14d20297F0Db91CEbE1823A7D6C' as `0x${string}`,
-  NotificationLog:           '0x0137C879f88BcB177d7B11bEd7c690195d8D7C5c' as `0x${string}`,
+  WeavePermissionedRegistry: '0x38E5F605bE16c4A54d0a1CF5A6E75DFF1679EFf3' as `0x${string}`,
+  WeaveWildcardResolver:     '0xE324fB0Fb00621094B8e81EA71E28D4263445377' as `0x${string}`,
+  WeaveRegistrar:            '0x47f73c5F82a43Cc4b3a007131Af0E84543146950' as `0x${string}`,
+  NotificationLog:           '0x8106E27a1FDE848Bf7A41fE90207A0e4Aa0dE849' as `0x${string}`,
 } as const
 
 export const SEPOLIA_RPC = 'https://eth-sepolia.g.alchemy.com/v2/alch_I7RtHwdMsa590uGHCV6jt'
