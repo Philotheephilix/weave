@@ -3,1122 +3,1027 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weave</title>
-  <meta name="description" content="Decentralized, privacy-first collaboration for teams, orgs, and DAOs. Full Microsoft Teams feature parity. Zero surveillance surface." />
+  <title>Weave — Private collaboration for teams that mean it</title>
+  <meta name="description" content="Full Microsoft Teams feature parity. Zero surveillance surface. No relay sees your traffic. No vendor owns your identity." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #08080a;
-      --surface:   #0f0f12;
-      --surface2:  #13131a;
-      --border:    #1a1a22;
-      --border2:   #22222e;
-      --accent:    #7c5cfc;
-      --accent2:   #38bdf8;
-      --accent-glow: rgba(124,92,252,0.18);
-      --text:      #e8e8f0;
-      --muted:     #5a5a72;
-      --muted2:    #7a7a96;
-      --green:     #22c55e;
-      --danger:    #ef4444;
+      --white:       #ffffff;
+      --bg:          #f8f8f8;
+      --border:      #dddddd;
+      --text:        #1d1c1d;
+      --muted:       #616061;
+      --green:       #007a5a;
+      --green-hover: #006048;
+      --purple:      #4a154b;
+      --purple-light:#f4ede4;
+      --link:        #1264a3;
+      --red:         #e01e5a;
     }
 
     html { scroll-behavior: smooth; }
 
     body {
-      background: var(--bg);
+      background: var(--white);
       color: var(--text);
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Inter', 'Lato', system-ui, sans-serif;
       line-height: 1.6;
       overflow-x: hidden;
     }
 
-    /* ── GRID OVERLAY ──────────────────────────────────── */
-    .grid-bg {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background-image:
-        linear-gradient(var(--border) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size: 72px 72px;
-      opacity: 0.35;
-      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 100%);
-    }
+    a { color: inherit; text-decoration: none; }
 
-    /* ── NAV ────────────────────────────────────────────── */
-    nav {
+    /* ── NAV ─────────────────────────────────────────────── */
+    .nav {
       position: sticky;
       top: 0;
       z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+    .nav-inner {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 2.5rem;
-      height: 60px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(8,8,10,0.85);
-      backdrop-filter: blur(20px);
+      gap: 24px;
     }
-    .nav-logo {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.35rem;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      background: linear-gradient(135deg, #a78bfa 0%, var(--accent2) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+    .nav-logo { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .nav-logo img { height: 28px; display: block; }
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 2.25rem;
-      list-style: none;
+      gap: 28px;
+      flex: 1;
+      justify-content: center;
     }
     .nav-links a {
-      color: var(--muted2);
-      text-decoration: none;
-      font-size: 0.875rem;
+      font-size: 15px;
       font-weight: 500;
+      color: var(--text);
       transition: color 0.15s;
     }
-    .nav-links a:hover { color: var(--text); }
-    .nav-cta {
-      background: var(--accent) !important;
-      color: #fff !important;
-      padding: 0.4rem 1.1rem;
-      border-radius: 7px;
-      font-weight: 600 !important;
-      font-size: 0.875rem !important;
-      transition: opacity 0.15s, transform 0.1s !important;
-    }
-    .nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
-
-    /* ── HERO ───────────────────────────────────────────── */
-    .hero {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 7rem 2rem 3rem;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(124,92,252,0.1);
-      border: 1px solid rgba(124,92,252,0.28);
-      color: #b4a4fd;
-      font-size: 0.78rem;
+    .nav-links a:hover { color: var(--green); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .btn-signin {
+      font-size: 15px;
       font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 0.35rem 0.9rem;
-      border-radius: 100px;
-      margin-bottom: 2rem;
-      animation: fade-up 0.6s ease both;
+      color: var(--green);
+      padding: 8px 16px;
+      border-radius: 4px;
+      transition: background 0.15s;
     }
-    .eyebrow-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      animation: pulse-dot 2s infinite;
-    }
-    @keyframes pulse-dot {
-      0%,100%{opacity:1;transform:scale(1)}
-      50%{opacity:0.4;transform:scale(0.7)}
-    }
-    .hero h1 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: clamp(2.6rem, 6vw, 4.5rem);
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      line-height: 1.06;
-      margin-bottom: 1.5rem;
-      animation: fade-up 0.6s 0.1s ease both;
-      text-wrap: balance;
-    }
-    .hero h1 .grad {
-      background: linear-gradient(135deg, #a78bfa 0%, var(--accent2) 60%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero-sub {
-      font-size: 1.15rem;
-      color: var(--muted2);
-      max-width: 580px;
-      margin: 0 auto 2.5rem;
-      line-height: 1.65;
-      animation: fade-up 0.6s 0.2s ease both;
-    }
-    .hero-actions {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      animation: fade-up 0.6s 0.3s ease both;
-    }
+    .btn-signin:hover { background: rgba(0,122,90,0.08); }
     .btn-primary {
-      background: var(--accent);
+      background: var(--green);
       color: #fff;
-      padding: 0.75rem 1.75rem;
-      border-radius: 9px;
-      text-decoration: none;
+      font-size: 15px;
       font-weight: 600;
-      font-size: 0.95rem;
-      transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
-      box-shadow: 0 0 0 0 var(--accent-glow);
+      padding: 8px 20px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s;
     }
-    .btn-primary:hover {
-      opacity: 0.9;
-      transform: translateY(-2px);
-      box-shadow: 0 0 32px 6px var(--accent-glow);
-    }
-    .btn-ghost {
+    .btn-primary:hover { background: var(--green-hover); }
+    .btn-outline {
+      background: transparent;
       color: var(--text);
-      padding: 0.75rem 1.75rem;
-      border-radius: 9px;
-      text-decoration: none;
-      font-weight: 500;
-      font-size: 0.95rem;
-      border: 1px solid var(--border2);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 8px 20px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
     }
-    .btn-ghost:hover { border-color: var(--muted); background: var(--surface); }
-
-    @keyframes fade-up {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .btn-outline:hover { border-color: var(--text); background: var(--bg); }
+    .btn-outline-white {
+      background: transparent;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 4px;
+      border: 2px solid rgba(255,255,255,0.6);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
     }
+    .btn-outline-white:hover { border-color: #fff; background: rgba(255,255,255,0.1); }
 
-    /* ── HERO APP MOCKUP ────────────────────────────────── */
-    .hero-mockup {
-      position: relative;
-      z-index: 1;
+    /* ── HERO ────────────────────────────────────────────── */
+    .hero {
+      padding: 80px 24px 60px;
+      text-align: center;
       max-width: 860px;
-      margin: 4rem auto 0;
-      animation: fade-up 0.7s 0.4s ease both;
+      margin: 0 auto;
     }
-    .mockup-glow {
-      position: absolute;
-      inset: -60px;
-      background: radial-gradient(ellipse 60% 40% at 50% 50%, rgba(124,92,252,0.22), transparent 70%);
-      pointer-events: none;
-      z-index: -1;
+    .hero h1 {
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 20px;
     }
-    .mockup-frame {
-      border: 1px solid var(--border2);
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    .hero h1 span { color: var(--green); }
+    .hero p {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--muted);
+      max-width: 640px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
     }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .hero-actions .btn-primary { font-size: 17px; padding: 12px 28px; }
+    .hero-actions .btn-outline { font-size: 17px; padding: 12px 28px; }
 
-    /* ── TICKER STRIP ───────────────────────────────────── */
-    .ticker {
-      position: relative;
-      z-index: 1;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 0;
-      margin: 4rem 0;
-      overflow: hidden;
+    /* trusted by */
+    .trusted {
+      text-align: center;
+      padding: 36px 24px 0;
     }
-    .ticker-track {
-      display: flex;
-      gap: 3rem;
-      animation: ticker-scroll 28s linear infinite;
-      width: max-content;
+    .trusted p {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
     }
-    .ticker-item {
+    .trusted-pills {
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--muted2);
-      font-size: 0.82rem;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .pill {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 18px;
+      font-size: 14px;
       font-weight: 500;
-      white-space: nowrap;
-    }
-    .ticker-item svg { flex-shrink: 0; }
-    @keyframes ticker-scroll {
-      from { transform: translateX(0); }
-      to   { transform: translateX(-50%); }
+      color: var(--text);
     }
 
-    /* ── SECTION WRAPPER ────────────────────────────────── */
-    .section {
-      position: relative;
-      z-index: 1;
+    /* ── CAROUSEL ────────────────────────────────────────── */
+    .carousel-section {
+      padding: 80px 24px;
+      background: var(--bg);
+    }
+    .carousel-inner {
       max-width: 1100px;
       margin: 0 auto;
-      padding: 0 2rem 6rem;
-    }
-    .section-label {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 0.6rem;
-    }
-    .section-title {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-      font-weight: 700;
-      letter-spacing: -0.04em;
-      margin-bottom: 0.75rem;
-      text-wrap: balance;
-    }
-    .section-sub {
-      color: var(--muted2);
-      font-size: 1rem;
-      max-width: 540px;
-      margin-bottom: 3rem;
-    }
-
-    /* ── PROBLEM STATS ──────────────────────────────────── */
-    .stat-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 3rem;
+      grid-template-columns: 340px 1fr;
+      gap: 60px;
+      align-items: start;
     }
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.75rem;
-      transition: border-color 0.2s, transform 0.2s;
-    }
-    .stat-card:hover { border-color: var(--border2); transform: translateY(-3px); }
-    .stat-number {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 2.4rem;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      font-variant-numeric: tabular-nums;
-      color: var(--text);
-      margin-bottom: 0.3rem;
-    }
-    .stat-number .unit { color: var(--accent); }
-    .stat-label { color: var(--muted2); font-size: 0.85rem; line-height: 1.4; }
-
-    .incident-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .incident {
-      background: var(--surface);
-      padding: 1.25rem 1.5rem;
-      display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-      transition: background 0.15s;
-    }
-    .incident:hover { background: var(--surface2); }
-    .incident-tag {
-      flex-shrink: 0;
-      font-size: 0.7rem;
+    .carousel-section h2 {
+      grid-column: 1 / -1;
+      font-size: 28px;
       font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      padding: 0.25rem 0.65rem;
-      border-radius: 6px;
-      margin-top: 0.1rem;
+      margin-bottom: 8px;
     }
-    .tag-subpoena { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
-    .tag-freeze   { background: rgba(251,191,36,0.1);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
-    .tag-comply   { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
-    .incident-text { font-size: 0.875rem; color: var(--muted2); line-height: 1.55; }
-    .incident-text strong { color: var(--text); }
-
-    /* ── FEATURE GRID ───────────────────────────────────── */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-    @media (max-width: 720px) {
-      .features-grid { grid-template-columns: 1fr; }
-      nav ul { display: none; }
-    }
-    .feat {
-      background: var(--surface);
-      padding: 2rem;
-      transition: background 0.2s, transform 0.2s;
+    .carousel-nav { display: flex; flex-direction: column; gap: 0; }
+    .carousel-item {
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
       position: relative;
     }
-    .feat:hover { background: var(--surface2); transform: translateY(-2px); z-index: 2; }
-    .feat-icon {
-      width: 40px; height: 40px;
-      border-radius: 10px;
+    .carousel-item:last-child { border-bottom: 1px solid var(--border); }
+    .carousel-item-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0;
+      transition: color 0.2s;
+    }
+    .carousel-item.active .carousel-item-title { color: var(--text); }
+    .carousel-item-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, margin-top 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+    .carousel-item.active .carousel-item-desc {
+      max-height: 200px;
+      margin-top: 10px;
+      opacity: 1;
+    }
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: var(--green);
+      width: 0%;
+      transition: none;
+    }
+    .carousel-item.active .progress-bar {
+      animation: progressFill 8s linear forwards;
+    }
+    @keyframes progressFill {
+      from { width: 0%; }
+      to   { width: 100%; }
+    }
+    .carousel-panel {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 1.1rem;
-      font-size: 1.1rem;
+      min-height: 400px;
     }
-    .feat h3 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1rem;
+    .carousel-panel svg { width: 100%; max-width: 480px; border-radius: 12px; }
+    .panel-slide { display: none; width: 100%; }
+    .panel-slide.active { display: flex; }
+
+    /* ── STATS BAND ──────────────────────────────────────── */
+    .stats-band {
+      background: var(--purple);
+      padding: 60px 24px;
+      color: #fff;
+    }
+    .stats-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 40px;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: clamp(32px, 4vw, 48px);
       font-weight: 700;
       letter-spacing: -0.02em;
-      margin-bottom: 0.4rem;
+      margin-bottom: 8px;
     }
-    .feat p { font-size: 0.83rem; color: var(--muted2); line-height: 1.55; }
+    .stat-label {
+      font-size: 15px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.4;
+    }
 
-    /* ── ARCHITECTURE SVG ───────────────────────────────── */
-    .arch-wrap {
-      background: var(--surface);
+    /* ── PROBLEM ─────────────────────────────────────────── */
+    .problem-section {
+      padding: 80px 24px;
+      background: var(--white);
+    }
+    .section-header {
+      max-width: 1100px;
+      margin: 0 auto 48px;
+    }
+    .section-header h2 {
+      font-size: clamp(28px, 3vw, 40px);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .section-header p {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 560px;
+    }
+    .incident-cards {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .incident-card {
+      border-left: 4px solid var(--red);
+      background: var(--bg);
+      border-radius: 0 8px 8px 0;
+      padding: 28px 24px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .incident-card.visible { opacity: 1; transform: none; }
+    .incident-card h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .incident-card .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--red);
+      background: rgba(224,30,90,0.1);
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-bottom: 10px;
+    }
+    .incident-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── FEATURE GRID ────────────────────────────────────── */
+    .features-section {
+      padding: 80px 24px;
+      background: var(--bg);
+    }
+    .features-grid {
+      max-width: 1100px;
+      margin: 48px auto 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--white);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 3rem 2rem;
+      border-radius: 8px;
+      padding: 28px;
+      transition: box-shadow 0.2s;
+    }
+    .feature-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .feature-icon { font-size: 28px; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* ── COMPARISON TABLE ────────────────────────────────── */
+    .comparison-section {
+      padding: 80px 24px;
+      background: var(--white);
       overflow-x: auto;
     }
-
-    /* ── COMPARISON TABLE ───────────────────────────────── */
-    .cmp-wrap {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-    .cmp-table {
+    .comparison-table {
+      max-width: 1000px;
+      margin: 48px auto 0;
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.875rem;
+      font-size: 15px;
     }
-    .cmp-table th {
-      padding: 1rem 1.25rem;
-      text-align: left;
-      font-weight: 700;
-      font-size: 0.8rem;
-      letter-spacing: -0.01em;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-    .cmp-table th:first-child { color: var(--muted2); font-weight: 500; }
-    .cmp-table th.col-weave { color: var(--accent); }
-    .cmp-table td {
-      padding: 0.9rem 1.25rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity 0.3s, transform 0.3s;
-    }
-    .cmp-table tr:last-child td { border-bottom: none; }
-    .cmp-table td:first-child { color: var(--muted2); font-weight: 500; }
-    .cmp-table td.col-weave { background: rgba(124,92,252,0.05); }
-    .yes { color: var(--green); font-weight: 700; }
-    .no  { color: var(--danger); font-weight: 700; }
-    .cmp-table tr.visible td { opacity: 1; transform: translateY(0); }
-
-    /* ── MARKET SECTION ─────────────────────────────────── */
-    .market-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-      margin-bottom: 3rem;
-    }
-    .market-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 2.25rem 2rem;
-    }
-    .market-num {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 3rem;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      font-variant-numeric: tabular-nums;
-      line-height: 1;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(135deg, #a78bfa, var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .market-label { color: var(--muted2); font-size: 0.9rem; line-height: 1.45; }
-
-    /* ── CTA SECTION ────────────────────────────────────── */
-    .cta-block {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 4rem 3rem;
+    .comparison-table th, .comparison-table td {
+      padding: 14px 20px;
       text-align: center;
-      position: relative;
-      overflow: hidden;
+      border-bottom: 1px solid var(--border);
     }
-    .cta-block::before {
-      content: '';
-      position: absolute;
-      top: -80px; left: 50%;
-      transform: translateX(-50%);
-      width: 300px; height: 200px;
-      background: radial-gradient(ellipse, rgba(124,92,252,0.3), transparent 70%);
-      pointer-events: none;
+    .comparison-table th { font-weight: 700; font-size: 14px; }
+    .comparison-table td:first-child { text-align: left; font-weight: 500; }
+    .comparison-table th:first-child { text-align: left; }
+    .comparison-table thead tr th:nth-child(2) {
+      background: var(--green);
+      color: #fff;
+      border-radius: 8px 8px 0 0;
     }
-    .cta-block h2 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.04em;
-      margin-bottom: 0.75rem;
-    }
-    .cta-block p { color: var(--muted2); margin-bottom: 2rem; }
-    .cta-links { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .chain-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: rgba(56,189,248,0.08);
-      border: 1px solid rgba(56,189,248,0.22);
-      color: var(--accent2);
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.3rem 0.8rem;
-      border-radius: 100px;
-      text-decoration: none;
-      transition: background 0.15s;
-    }
-    .chain-badge:hover { background: rgba(56,189,248,0.14); }
+    .comparison-table tbody tr:hover td { background: var(--bg); }
+    .check-yes { color: var(--green); font-weight: 700; font-size: 18px; }
+    .check-no  { color: #bbb; font-size: 18px; }
+    .check-partial { color: #f59e0b; font-size: 13px; font-weight: 600; }
 
-    /* ── FOOTER ─────────────────────────────────────────── */
+    /* ── BOTTOM CTA ──────────────────────────────────────── */
+    .bottom-cta {
+      background: var(--purple);
+      padding: 80px 24px;
+      text-align: center;
+      color: #fff;
+    }
+    .bottom-cta h2 {
+      font-size: clamp(28px, 3vw, 44px);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .bottom-cta p {
+      font-size: 18px;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 36px;
+    }
+    .bottom-cta-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── FOOTER ──────────────────────────────────────────── */
     footer {
-      position: relative;
-      z-index: 1;
+      background: var(--white);
       border-top: 1px solid var(--border);
-      padding: 2rem 2.5rem;
+      padding: 60px 24px 32px;
+    }
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .footer-cols {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 40px;
+      margin-bottom: 48px;
+    }
+    .footer-col h4 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .footer-col a {
+      display: block;
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      transition: color 0.15s;
+    }
+    .footer-col a:hover { color: var(--text); }
+    .footer-bottom {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
       flex-wrap: wrap;
-      gap: 1rem;
+      gap: 12px;
+    }
+    .footer-bottom-logo { display: flex; align-items: center; gap: 8px; }
+    .footer-bottom-logo img { height: 24px; }
+    .footer-bottom-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 13px;
       color: var(--muted);
-      font-size: 0.8rem;
     }
-    footer a { color: var(--muted); text-decoration: none; }
-    footer a:hover { color: var(--muted2); }
+    .footer-bottom-right a { color: var(--muted); }
+    .footer-bottom-right a:hover { color: var(--text); }
 
-    /* ── ANIMATIONS ─────────────────────────────────────── */
-    @keyframes blink-cursor {
-      0%,100%{opacity:1} 50%{opacity:0}
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .carousel-inner { grid-template-columns: 1fr; gap: 32px; }
+      .carousel-section h2 { grid-column: 1; }
+      .stats-inner { grid-template-columns: repeat(2, 1fr); }
+      .incident-cards { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .footer-cols { grid-template-columns: repeat(2, 1fr); }
     }
-    @keyframes msg-pulse {
-      0%{box-shadow:0 0 0 0 rgba(124,92,252,0.5)}
-      70%{box-shadow:0 0 0 8px rgba(124,92,252,0)}
-      100%{box-shadow:0 0 0 0 rgba(124,92,252,0)}
+    @media (max-width: 600px) {
+      .stats-inner { grid-template-columns: 1fr 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .footer-cols { grid-template-columns: 1fr 1fr; }
+      .comparison-table { font-size: 13px; }
+      .comparison-table th, .comparison-table td { padding: 10px 12px; }
     }
   </style>
 </head>
 <body>
 
-<div class="grid-bg"></div>
-
-<!-- NAV -->
-<nav>
-  <img src="waeve.png" alt="Weave" style="height:32px;width:auto;display:block;" />
-  <ul class="nav-links">
-    <li><a href="#problem">Problem</a></li>
-    <li><a href="#features">Features</a></li>
-    <li><a href="#architecture">Architecture</a></li>
-    <li><a href="#compare">Compare</a></li>
-    <li><a href="https://github.com/Philotheephilix/weave" class="nav-cta">GitHub</a></li>
-  </ul>
+<!-- ── NAV ─────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">
+      <img src="waeve.png" alt="Weave" />
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#protocol">Protocol</a>
+      <a href="#compare">Compare</a>
+      <a href="#problem">Why Weave</a>
+    </div>
+    <div class="nav-actions">
+      <a href="#" class="btn-signin">Sign in</a>
+      <a href="#" class="btn-primary">Get started</a>
+    </div>
+  </div>
 </nav>
 
-<!-- HERO -->
-<div class="hero">
-  <div class="hero-eyebrow">
-    <span class="eyebrow-dot"></span>
-    Built for ETHGlobal · ENSv2 + Chainlink CRE
-  </div>
-  <h1>The collaboration tool<br /><span class="grad">no subpoena can touch</span></h1>
-  <p class="hero-sub">
-    Full Microsoft Teams feature parity — channels, DMs, voice, video, files — running entirely over Tor v3 with ENSv2 on-chain identity and Noise_XX end-to-end encryption.
-  </p>
+<!-- ── HERO ────────────────────────────────────────────── -->
+<section class="hero">
+  <h1>Your team. Your data.<br><span>Nobody else's.</span></h1>
+  <p>Weave gives your org full Microsoft Teams feature parity — channels, voice, video, file sharing, admin roles — with zero surveillance surface. No relay sees your traffic. No vendor owns your identity.</p>
   <div class="hero-actions">
-    <a href="#features" class="btn-primary">See how it works</a>
-    <a href="https://github.com/Philotheephilix/weave" class="btn-ghost">View source →</a>
+    <a href="#" class="btn-primary">Get started</a>
+    <a href="https://github.com" class="btn-outline">Read the docs</a>
+  </div>
+</section>
+
+<div class="trusted">
+  <p>Built for teams that demand privacy</p>
+  <div class="trusted-pills">
+    <span class="pill">DAOs</span>
+    <span class="pill">Law Firms</span>
+    <span class="pill">DeFi Teams</span>
+    <span class="pill">Journalists</span>
+    <span class="pill">Enterprises</span>
+    <span class="pill">NGOs</span>
   </div>
 </div>
 
-<!-- APP MOCKUP -->
-<div class="hero-mockup">
-  <div class="mockup-glow"></div>
-  <div class="mockup-frame">
-    <!-- SVG App UI Mockup -->
-    <svg viewBox="0 0 860 520" xmlns="http://www.w3.org/2000/svg" width="100%" style="display:block">
-      <defs>
-        <linearGradient id="sidebg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#0d0d14"/>
-          <stop offset="100%" stop-color="#0a0a10"/>
-        </linearGradient>
-        <linearGradient id="mainbg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#0f0f14"/>
-          <stop offset="100%" stop-color="#0c0c12"/>
-        </linearGradient>
-        <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#7c5cfc"/>
-          <stop offset="100%" stop-color="#38bdf8"/>
-        </linearGradient>
-        <filter id="msgPulse">
-          <feGaussianBlur stdDeviation="3" result="blur"/>
-          <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-        </filter>
-      </defs>
+<!-- ── CAROUSEL ────────────────────────────────────────── -->
+<section class="carousel-section" id="features">
+  <div class="carousel-inner">
+    <h2>Everything your team needs.<br>Nothing your lawyers fear.</h2>
+    <div></div><!-- spacer for grid alignment -->
 
-      <!-- Background -->
-      <rect width="860" height="520" fill="#08080a"/>
-
-      <!-- Sidebar -->
-      <rect x="0" y="0" width="210" height="520" fill="url(#sidebg)"/>
-      <rect x="210" y="0" width="1" height="520" fill="#1a1a22"/>
-
-      <!-- Sidebar: Org name -->
-      <rect x="12" y="16" width="186" height="36" rx="7" fill="#13131a"/>
-      <text x="52" y="39" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#e8e8f0">acme.weave.eth</text>
-      <circle cx="30" cy="34" r="10" fill="#7c5cfc" opacity="0.9"/>
-      <text x="30" y="38" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">A</text>
-      <!-- chevron -->
-      <path d="M182 31 L186 35 L182 39" stroke="#5a5a72" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-
-      <!-- Section: Channels -->
-      <text x="16" y="78" font-family="Inter,sans-serif" font-size="9.5" font-weight="700" fill="#5a5a72" letter-spacing="0.08em">CHANNELS</text>
-
-      <!-- # general — active -->
-      <rect x="8" y="86" width="194" height="30" rx="6" fill="rgba(124,92,252,0.14)"/>
-      <text x="22" y="106" font-family="Inter,sans-serif" font-size="12" fill="#a78bfa" font-weight="600"># general</text>
-
-      <!-- # engineering -->
-      <text x="22" y="132" font-family="Inter,sans-serif" font-size="12" fill="#7a7a96"># engineering</text>
-
-      <!-- # dao-ops -->
-      <text x="22" y="156" font-family="Inter,sans-serif" font-size="12" fill="#7a7a96"># dao-ops</text>
-      <!-- unread badge -->
-      <circle cx="189" cy="151" r="9" fill="#7c5cfc"/>
-      <text x="189" y="155" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="#fff" text-anchor="middle">3</text>
-
-      <!-- # announcements -->
-      <text x="22" y="180" font-family="Inter,sans-serif" font-size="12" fill="#7a7a96"># announcements</text>
-
-      <!-- Section: Direct Messages -->
-      <text x="16" y="210" font-family="Inter,sans-serif" font-size="9.5" font-weight="700" fill="#5a5a72" letter-spacing="0.08em">DIRECT MESSAGES</text>
-
-      <!-- DM 1 -->
-      <circle cx="30" cy="230" r="10" fill="#22c55e" opacity="0.85"/>
-      <text x="30" y="234" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">B</text>
-      <circle cx="38" cy="238" r="4" fill="#22c55e" stroke="#0d0d14" stroke-width="1.5"/>
-      <text x="46" y="234" font-family="Inter,sans-serif" font-size="11.5" fill="#7a7a96">bob.acme.weave.eth</text>
-
-      <!-- DM 2 -->
-      <circle cx="30" cy="258" r="10" fill="#38bdf8" opacity="0.85"/>
-      <text x="30" y="262" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">C</text>
-      <circle cx="38" cy="266" r="4" fill="#5a5a72" stroke="#0d0d14" stroke-width="1.5"/>
-      <text x="46" y="262" font-family="Inter,sans-serif" font-size="11.5" fill="#7a7a96">carol.acme.weave.eth</text>
-
-      <!-- Sidebar bottom: status -->
-      <rect x="0" y="476" width="210" height="44" fill="#0a0a10"/>
-      <rect x="0" y="476" width="210" height="1" fill="#1a1a22"/>
-      <circle cx="20" cy="498" r="8" fill="#7c5cfc" opacity="0.9"/>
-      <text x="20" y="502" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#fff" text-anchor="middle">Y</text>
-      <circle cx="27" cy="505" r="3.5" fill="#22c55e" stroke="#0a0a10" stroke-width="1.2"/>
-      <text x="36" y="501" font-family="Inter,sans-serif" font-size="11" fill="#e8e8f0" font-weight="600">you.acme.weave.eth</text>
-
-      <!-- ── MAIN CHAT AREA ── -->
-      <rect x="211" y="0" width="520" height="520" fill="url(#mainbg)"/>
-
-      <!-- Top bar -->
-      <rect x="211" y="0" width="520" height="52" fill="#0d0d14"/>
-      <rect x="211" y="52" width="520" height="1" fill="#1a1a22"/>
-
-      <!-- Lock icon -->
-      <rect x="228" y="17" width="14" height="11" rx="2" fill="none" stroke="#7c5cfc" stroke-width="1.4"/>
-      <path d="M231 17v-4a4 4 0 018 0v4" stroke="#7c5cfc" stroke-width="1.4" fill="none"/>
-
-      <text x="250" y="32" font-family="Space Grotesk,sans-serif" font-size="14" font-weight="700" fill="#e8e8f0" letter-spacing="-0.02em"># general</text>
-
-      <!-- Status badges -->
-      <rect x="490" y="16" width="52" height="20" rx="10" fill="rgba(34,197,94,0.12)" stroke="rgba(34,197,94,0.28)" stroke-width="1"/>
-      <circle cx="501" cy="26" r="3.5" fill="#22c55e"/>
-      <text x="508" y="30" font-family="Inter,sans-serif" font-size="9.5" font-weight="600" fill="#22c55e">Tor ✓</text>
-
-      <rect x="548" y="16" width="52" height="20" rx="10" fill="rgba(124,92,252,0.12)" stroke="rgba(124,92,252,0.28)" stroke-width="1"/>
-      <circle cx="559" cy="26" r="3.5" fill="#7c5cfc"/>
-      <text x="566" y="30" font-family="Inter,sans-serif" font-size="9.5" font-weight="600" fill="#a78bfa">E2E ✓</text>
-
-      <!-- Search icon top right -->
-      <circle cx="700" cy="26" r="7" fill="none" stroke="#3a3a4a" stroke-width="1.4"/>
-      <line x1="705" y1="31" x2="709" y2="35" stroke="#3a3a4a" stroke-width="1.4" stroke-linecap="round"/>
-
-      <!-- Date divider -->
-      <line x1="245" y1="85" x2="380" y2="85" stroke="#1a1a22" stroke-width="1"/>
-      <text x="313" y="89" font-family="Inter,sans-serif" font-size="9" fill="#3a3a4a" text-anchor="middle">Today</text>
-      <line x1="345" y1="85" x2="480" y2="85" stroke="#1a1a22" stroke-width="1"/>
-
-      <!-- Message 1 — "gm" -->
-      <circle cx="238" cy="118" r="14" fill="#38bdf8" opacity="0.85"/>
-      <text x="238" y="122" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">A</text>
-      <text x="260" y="110" font-family="Inter,sans-serif" font-size="10.5" font-weight="600" fill="#e8e8f0">alice.acme.weave.eth</text>
-      <text x="382" y="110" font-family="Inter,sans-serif" font-size="9" fill="#3a3a4a">09:14</text>
-      <text x="260" y="128" font-family="Inter,sans-serif" font-size="12" fill="#b0b0c8">gm — key rotation complete ✓</text>
-
-      <!-- Message 2 — "proposal" — animated pulse -->
-      <circle cx="238" cy="165" r="14" fill="#7c5cfc" opacity="0.9"/>
-      <text x="238" y="169" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">B</text>
-      <text x="260" y="157" font-family="Inter,sans-serif" font-size="10.5" font-weight="600" fill="#e8e8f0">bob.acme.weave.eth</text>
-      <text x="382" y="157" font-family="Inter,sans-serif" font-size="9" fill="#3a3a4a">09:22</text>
-      <!-- Message bubble with pulse -->
-      <rect x="258" y="161" width="235" height="24" rx="6" fill="rgba(124,92,252,0.12)" stroke="rgba(124,92,252,0.3)" stroke-width="1">
-        <animate attributeName="stroke-opacity" values="0.3;0.7;0.3" dur="2.5s" repeatCount="indefinite"/>
-      </rect>
-      <text x="268" y="177" font-family="Inter,sans-serif" font-size="11.5" fill="#c4b5fd">proposal passed onchain 🗳️</text>
-
-      <!-- Message 3 — system join message -->
-      <rect x="225" y="210" width="360" height="22" rx="11" fill="#13131a"/>
-      <text x="405" y="225" font-family="Inter,sans-serif" font-size="10.5" fill="#5a5a72" text-anchor="middle">carol.acme.weave.eth joined the channel</text>
-
-      <!-- Message 4 — carol replies -->
-      <circle cx="238" cy="258" r="14" fill="#22c55e" opacity="0.85"/>
-      <text x="238" y="262" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">C</text>
-      <text x="260" y="250" font-family="Inter,sans-serif" font-size="10.5" font-weight="600" fill="#e8e8f0">carol.acme.weave.eth</text>
-      <text x="385" y="250" font-family="Inter,sans-serif" font-size="9" fill="#3a3a4a">09:31</text>
-      <text x="260" y="268" font-family="Inter,sans-serif" font-size="12" fill="#b0b0c8">gm 👋  ready for the vote</text>
-
-      <!-- Message 5 — alice reply -->
-      <circle cx="238" cy="305" r="14" fill="#38bdf8" opacity="0.85"/>
-      <text x="238" y="309" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">A</text>
-      <text x="260" y="297" font-family="Inter,sans-serif" font-size="10.5" font-weight="600" fill="#e8e8f0">alice.acme.weave.eth</text>
-      <text x="385" y="297" font-family="Inter,sans-serif" font-size="9" fill="#3a3a4a">09:33</text>
-      <text x="260" y="315" font-family="Inter,sans-serif" font-size="12" fill="#b0b0c8">tx confirmed 🟢  0x47f7...6950</text>
-
-      <!-- Chat input -->
-      <rect x="225" y="458" width="490" height="42" rx="10" fill="#13131a" stroke="#22222e" stroke-width="1"/>
-      <text x="244" y="484" font-family="Inter,sans-serif" font-size="12" fill="#3a3a4a">Message #general...</text>
-      <!-- Blinking cursor -->
-      <rect x="358" y="470" width="1.5" height="16" fill="#7c5cfc">
-        <animate attributeName="opacity" values="1;0;1" dur="1.05s" repeatCount="indefinite"/>
-      </rect>
-      <!-- Input icons -->
-      <text x="672" y="484" font-family="Inter,sans-serif" font-size="16" fill="#3a3a4a">⊕</text>
-      <text x="698" y="484" font-family="Inter,sans-serif" font-size="16" fill="#3a3a4a">☺</text>
-
-      <!-- ── RIGHT PANEL: Members ── -->
-      <rect x="731" y="0" width="129" height="520" fill="#0d0d14"/>
-      <rect x="731" y="0" width="1" height="520" fill="#1a1a22"/>
-
-      <text x="744" y="30" font-family="Inter,sans-serif" font-size="9.5" font-weight="700" fill="#5a5a72" letter-spacing="0.08em">MEMBERS — 3</text>
-      <rect x="731" y="52" width="129" height="1" fill="#1a1a22"/>
-
-      <!-- Member rows -->
-      <circle cx="752" cy="80" r="9" fill="#38bdf8" opacity="0.85"/>
-      <text x="752" y="84" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">A</text>
-      <circle cx="759" cy="87" r="3.5" fill="#22c55e" stroke="#0d0d14" stroke-width="1.2"/>
-      <text x="768" y="78" font-family="Inter,sans-serif" font-size="9" fill="#e8e8f0" font-weight="600">alice</text>
-      <text x="768" y="89" font-family="Inter,sans-serif" font-size="8.5" fill="#5a5a72">Admin</text>
-
-      <circle cx="752" cy="115" r="9" fill="#7c5cfc" opacity="0.9"/>
-      <text x="752" y="119" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">B</text>
-      <circle cx="759" cy="122" r="3.5" fill="#22c55e" stroke="#0d0d14" stroke-width="1.2"/>
-      <text x="768" y="113" font-family="Inter,sans-serif" font-size="9" fill="#e8e8f0" font-weight="600">bob</text>
-      <text x="768" y="124" font-family="Inter,sans-serif" font-size="8.5" fill="#5a5a72">Member</text>
-
-      <circle cx="752" cy="150" r="9" fill="#22c55e" opacity="0.85"/>
-      <text x="752" y="154" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">C</text>
-      <circle cx="759" cy="157" r="3.5" fill="#5a5a72" stroke="#0d0d14" stroke-width="1.2"/>
-      <text x="768" y="148" font-family="Inter,sans-serif" font-size="9" fill="#e8e8f0" font-weight="600">carol</text>
-      <text x="768" y="159" font-family="Inter,sans-serif" font-size="8.5" fill="#5a5a72">Member</text>
-
-      <!-- Role tags below -->
-      <rect x="740" y="185" width="110" height="18" rx="4" fill="rgba(124,92,252,0.1)" stroke="rgba(124,92,252,0.2)" stroke-width="1"/>
-      <text x="795" y="197" font-family="Inter,sans-serif" font-size="8.5" fill="#a78bfa" text-anchor="middle">EAC bitmap: 0x01</text>
-
-      <!-- Divider line in right panel -->
-      <rect x="740" y="214" width="110" height="1" fill="#1a1a22"/>
-      <text x="744" y="230" font-family="Inter,sans-serif" font-size="9" fill="#5a5a72">Tor ✓</text>
-      <text x="744" y="244" font-family="Inter,sans-serif" font-size="9" fill="#5a5a72">E2E ✓</text>
-      <text x="744" y="258" font-family="Inter,sans-serif" font-size="9" fill="#5a5a72">Keys rotated</text>
-      <text x="744" y="272" font-family="Inter,sans-serif" font-size="9" fill="#22c55e">5 min ago</text>
-    </svg>
-  </div>
-</div>
-
-<!-- TICKER -->
-<div class="ticker">
-  <div class="ticker-track" id="ticker">
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(34,197,94,0.2)"/><circle cx="7" cy="7" r="3" fill="#22c55e"/></svg>No IP exposed to any relay</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(124,92,252,0.2)"/><circle cx="7" cy="7" r="3" fill="#7c5cfc"/></svg>Noise_XX end-to-end encryption</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(56,189,248,0.2)"/><circle cx="7" cy="7" r="3" fill="#38bdf8"/></svg>ENSv2 on-chain identity</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(34,197,94,0.2)"/><circle cx="7" cy="7" r="3" fill="#22c55e"/></svg>ERC-5564 stealth addressing</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(124,92,252,0.2)"/><circle cx="7" cy="7" r="3" fill="#7c5cfc"/></svg>Arkiv decentralized message storage</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(56,189,248,0.2)"/><circle cx="7" cy="7" r="3" fill="#38bdf8"/></svg>Chainlink CRE confidential workflow</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(34,197,94,0.2)"/><circle cx="7" cy="7" r="3" fill="#22c55e"/></svg>No relay. No server. No metadata.</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(124,92,252,0.2)"/><circle cx="7" cy="7" r="3" fill="#7c5cfc"/></svg>No IP exposed to any relay</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(124,92,252,0.2)"/><circle cx="7" cy="7" r="3" fill="#7c5cfc"/></svg>Noise_XX end-to-end encryption</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(56,189,248,0.2)"/><circle cx="7" cy="7" r="3" fill="#38bdf8"/></svg>ENSv2 on-chain identity</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(34,197,94,0.2)"/><circle cx="7" cy="7" r="3" fill="#22c55e"/></svg>ERC-5564 stealth addressing</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(124,92,252,0.2)"/><circle cx="7" cy="7" r="3" fill="#7c5cfc"/></svg>Arkiv decentralized message storage</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(56,189,248,0.2)"/><circle cx="7" cy="7" r="3" fill="#38bdf8"/></svg>Chainlink CRE confidential workflow</div>
-    <div class="ticker-item"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(34,197,94,0.2)"/><circle cx="7" cy="7" r="3" fill="#22c55e"/></svg>No relay. No server. No metadata.</div>
-  </div>
-</div>
-
-<!-- PROBLEM -->
-<section class="section" id="problem">
-  <div class="section-label">The Problem</div>
-  <h2 class="section-title">$630K/year to fund your own surveillance</h2>
-  <p class="section-sub">Enterprise comms platforms are surveillance infrastructure wrapped in a subscription model.</p>
-
-  <div class="stat-cards">
-    <div class="stat-card">
-      <div class="stat-number"><span class="counter" data-target="13">0</span><span class="unit">B</span></div>
-      <div class="stat-label">Microsoft Teams estimated annual revenue. 320M MAU. Logs everything by default.</div>
+    <div class="carousel-nav">
+      <div class="carousel-item active" data-index="0">
+        <div class="carousel-item-title">Identity</div>
+        <div class="carousel-item-desc">
+          ENSv2 <code>alice.acme.weave.eth</code> — your identity lives on Ethereum, not a vendor's server. Text records store your Noise pubkey, onion address, and stealth keys. No account to delete, no data to request.
+        </div>
+        <div class="progress-bar"></div>
+      </div>
+      <div class="carousel-item" data-index="1">
+        <div class="carousel-item-title">Privacy</div>
+        <div class="carousel-item-desc">
+          Every connection routes through Tor v3 onion services — no STUN, no TURN, no ICE. Noise_XX encrypts every byte. ERC-5564 stealth addresses destroy the communication graph.
+        </div>
+        <div class="progress-bar"></div>
+      </div>
+      <div class="carousel-item" data-index="2">
+        <div class="carousel-item-title">Channels</div>
+        <div class="carousel-item-desc">
+          Channels, DMs, teams, voice huddles, file sharing — full Teams-parity. Messages stored on Arkiv, encrypted client-side before upload. Channel keys rotate on membership change.
+        </div>
+        <div class="progress-bar"></div>
+      </div>
+      <div class="carousel-item" data-index="3">
+        <div class="carousel-item-title">Roles</div>
+        <div class="carousel-item-desc">
+          EAC 256-bit role bitmap on-chain. Define custom roles per org (nybbles 16–63). Grant, revoke, add sub-admins — all signed transactions. No Slack admin panel, no AWS IAM.
+        </div>
+        <div class="progress-bar"></div>
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-number">$<span class="counter" data-target="630">0</span><span class="unit">K</span></div>
-      <div class="stat-label">Cost per year for a 10,000-seat Teams deployment — for a product that hands your communication graph to any government that asks.</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number">$<span class="counter" data-target="300">0</span><span class="unit">K</span></div>
-      <div class="stat-label">Typical Slack Enterprise contract per year. Message graph, sender/recipient timestamps reachable by court order.</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number"><span class="counter" data-target="35">0</span><span class="unit">M</span></div>
-      <div class="stat-label">SpartacusDAO funds frozen. Lawsuit served <em>via Discord</em>. Discord accepted legal service. Court upheld it.</div>
-    </div>
-  </div>
 
-  <div class="incident-list">
-    <div class="incident">
-      <span class="incident-tag tag-subpoena">SEC Subpoena</span>
-      <div class="incident-text"><strong>Sushi DAO (2023)</strong> — SEC subpoenaed the DAO and its CEO Jared Grey. They coordinated on Discord. Discord usernames linked to on-chain wallet addresses under any legal pressure.</div>
-    </div>
-    <div class="incident">
-      <span class="incident-tag tag-freeze">$35M Freeze</span>
-      <div class="incident-text"><strong>SpartacusDAO (2023)</strong> — Lawsuit served via Discord NFT drop and channel post. $35M asset freeze upheld. Discord accepted service as legally valid.</div>
-    </div>
-    <div class="incident">
-      <span class="incident-tag tag-comply">Data Disclosed</span>
-      <div class="incident-text"><strong>Path Network (2023)</strong> — US court granted subpoena for Discord account data and full login history. Discord complied without notice to the user.</div>
+    <div class="carousel-panel">
+      <!-- Panel 0: Identity -->
+      <div class="panel-slide active" data-panel="0">
+        <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" style="background:#f4f0ff;border-radius:16px;">
+          <!-- hex grid bg -->
+          <defs>
+            <pattern id="hexgrid" x="0" y="0" width="50" height="58" patternUnits="userSpaceOnUse">
+              <polygon points="25,2 48,14.5 48,43.5 25,56 2,43.5 2,14.5" fill="none" stroke="#c4b5fd" stroke-width="0.8"/>
+            </pattern>
+          </defs>
+          <rect width="480" height="360" fill="url(#hexgrid)" opacity="0.5"/>
+          <!-- card -->
+          <rect x="60" y="80" width="360" height="200" rx="16" fill="white" filter="drop-shadow(0 8px 32px rgba(0,0,0,0.12))"/>
+          <!-- ENS label -->
+          <text x="240" y="135" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#4a154b">alice.acme.weave.eth</text>
+          <line x1="80" y1="148" x2="400" y2="148" stroke="#eee" stroke-width="1"/>
+          <!-- pill tags -->
+          <rect x="80" y="162" width="130" height="28" rx="14" fill="#e0f7ef"/>
+          <text x="145" y="181" text-anchor="middle" font-size="13" fill="#007a5a" font-weight="600">🔑 Noise pubkey</text>
+          <rect x="222" y="162" width="110" height="28" rx="14" fill="#fef3c7"/>
+          <text x="277" y="181" text-anchor="middle" font-size="13" fill="#92400e" font-weight="600">🧅 Onion addr</text>
+          <rect x="80" y="200" width="100" height="28" rx="14" fill="#ede9fe"/>
+          <text x="130" y="219" text-anchor="middle" font-size="13" fill="#6d28d9" font-weight="600">👁 Stealth key</text>
+          <!-- ethereum logo -->
+          <text x="380" y="250" font-size="32" text-anchor="middle">⟠</text>
+          <text x="380" y="265" font-size="11" text-anchor="middle" fill="#9ca3af">Ethereum</text>
+          <!-- bottom label -->
+          <text x="240" y="295" text-anchor="middle" font-size="13" fill="#616061">On-chain · Censorship-resistant · Self-sovereign</text>
+        </svg>
+      </div>
+
+      <!-- Panel 1: Privacy -->
+      <div class="panel-slide" data-panel="1">
+        <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" style="background:#f0fdf4;border-radius:16px;">
+          <!-- Alice node -->
+          <circle cx="90" cy="180" r="48" fill="#007a5a" opacity="0.12"/>
+          <circle cx="90" cy="180" r="36" fill="#007a5a"/>
+          <text x="90" y="176" text-anchor="middle" font-size="11" fill="white" font-weight="700">Alice</text>
+          <text x="90" y="190" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.85)">.onion</text>
+          <!-- Bob node -->
+          <circle cx="390" cy="180" r="48" fill="#1264a3" opacity="0.12"/>
+          <circle cx="390" cy="180" r="36" fill="#1264a3"/>
+          <text x="390" y="176" text-anchor="middle" font-size="11" fill="white" font-weight="700">Bob</text>
+          <text x="390" y="190" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.85)">.onion</text>
+          <!-- tunnel -->
+          <path d="M130 180 Q240 130 350 180" stroke="#007a5a" stroke-width="3" fill="none" stroke-dasharray="8 4"/>
+          <path d="M130 180 Q240 230 350 180" stroke="#007a5a" stroke-width="3" fill="none" stroke-dasharray="8 4"/>
+          <!-- lock icon in center -->
+          <circle cx="240" cy="180" r="22" fill="white" stroke="#007a5a" stroke-width="2"/>
+          <text x="240" y="188" text-anchor="middle" font-size="20">🔒</text>
+          <!-- label -->
+          <text x="240" y="140" text-anchor="middle" font-size="12" fill="#007a5a" font-weight="600">Noise_XX · ChaCha20-Poly1305</text>
+          <!-- crossed-out server -->
+          <rect x="190" y="270" width="100" height="44" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1.5"/>
+          <text x="240" y="288" text-anchor="middle" font-size="10" fill="#991b1b">🗄️ Relay server</text>
+          <text x="240" y="305" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="700">✕ sees nothing</text>
+          <line x1="185" y1="270" x2="295" y2="314" stroke="#dc2626" stroke-width="2.5" opacity="0.6"/>
+          <text x="90" y="240" text-anchor="middle" font-size="11" fill="#616061">ephemeral</text>
+          <text x="390" y="240" text-anchor="middle" font-size="11" fill="#616061">ephemeral</text>
+        </svg>
+      </div>
+
+      <!-- Panel 2: Channels -->
+      <div class="panel-slide" data-panel="2">
+        <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" style="background:#f8f8f8;border-radius:16px;">
+          <!-- window chrome -->
+          <rect x="20" y="20" width="440" height="320" rx="10" fill="white" stroke="#e5e5e5" stroke-width="1" filter="drop-shadow(0 4px 16px rgba(0,0,0,0.1))"/>
+          <!-- top bar -->
+          <rect x="20" y="20" width="440" height="40" rx="10" fill="#4a154b"/>
+          <rect x="20" y="44" width="440" height="16" fill="#4a154b"/>
+          <circle cx="44" cy="40" r="7" fill="#ff5f57"/>
+          <circle cx="64" cy="40" r="7" fill="#ffbd2e"/>
+          <circle cx="84" cy="40" r="7" fill="#28ca41"/>
+          <text x="240" y="45" text-anchor="middle" font-size="13" fill="white" font-weight="600">🔒 E2E encrypted · #general</text>
+          <!-- sidebar -->
+          <rect x="20" y="60" width="110" height="280" rx="0" fill="#3f0e40"/>
+          <rect x="20" y="320" width="110" height="20" rx="0 0 10 10" fill="#3f0e40"/>
+          <text x="75" y="90" text-anchor="middle" font-size="11" fill="rgba(255,255,255,0.5)" font-weight="600">CHANNELS</text>
+          <text x="75" y="114" text-anchor="middle" font-size="12" fill="white"># general</text>
+          <text x="75" y="136" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.65)"># engineering</text>
+          <text x="75" y="158" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.65)"># dao-ops</text>
+          <text x="75" y="200" text-anchor="middle" font-size="11" fill="rgba(255,255,255,0.5)" font-weight="600">DIRECT</text>
+          <text x="75" y="224" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.65)">🟢 alice.eth</text>
+          <text x="75" y="246" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.65)">⬜ bob.eth</text>
+          <!-- messages -->
+          <rect x="150" y="78" width="36" height="36" rx="18" fill="#007a5a"/>
+          <text x="168" y="101" text-anchor="middle" font-size="14" fill="white">A</text>
+          <text x="196" y="88" font-size="11" fill="#1d1c1d" font-weight="600">alice.acme.weave.eth</text>
+          <text x="196" y="103" font-size="12" fill="#616061">Hey team — new deploy is live 🚀</text>
+
+          <rect x="150" y="126" width="36" height="36" rx="18" fill="#1264a3"/>
+          <text x="168" y="149" text-anchor="middle" font-size="14" fill="white">B</text>
+          <text x="196" y="136" font-size="11" fill="#1d1c1d" font-weight="600">bob.org.weave.eth</text>
+          <text x="196" y="151" font-size="12" fill="#616061">Looks good — contracts verified ✅</text>
+
+          <rect x="150" y="174" width="36" height="36" rx="18" fill="#e01e5a"/>
+          <text x="168" y="197" text-anchor="middle" font-size="14" fill="white">C</text>
+          <text x="196" y="184" font-size="11" fill="#1d1c1d" font-weight="600">carol.org.weave.eth</text>
+          <text x="196" y="199" font-size="12" fill="#616061">Rotating channel key now...</text>
+
+          <!-- input bar -->
+          <rect x="140" y="292" width="310" height="36" rx="6" fill="#f8f8f8" stroke="#e5e5e5" stroke-width="1"/>
+          <text x="160" y="315" font-size="12" fill="#bbb">Message #general</text>
+          <!-- blinking cursor -->
+          <rect x="156" y="300" width="2" height="16" fill="#007a5a">
+            <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      </div>
+
+      <!-- Panel 3: Roles -->
+      <div class="panel-slide" data-panel="3">
+        <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" style="background:#fffbeb;border-radius:16px;">
+          <text x="240" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#1d1c1d">On-chain Role Bitmap (EAC)</text>
+          <!-- table header -->
+          <rect x="40" y="58" width="400" height="32" rx="4" fill="#4a154b"/>
+          <text x="120" y="79" text-anchor="middle" font-size="12" fill="white" font-weight="700">Role</text>
+          <text x="240" y="79" text-anchor="middle" font-size="12" fill="white" font-weight="700">Nybble</text>
+          <text x="350" y="79" text-anchor="middle" font-size="12" fill="white" font-weight="700">alice.eth ✓</text>
+
+          <!-- rows -->
+          <rect x="40" y="90" width="400" height="30" fill="white"/>
+          <text x="120" y="110" text-anchor="middle" font-size="13" fill="#1d1c1d">REGISTRAR</text>
+          <rect x="215" y="96" width="50" height="18" rx="4" fill="#dbeafe"/>
+          <text x="240" y="109" text-anchor="middle" font-size="11" fill="#1e40af" font-weight="600">0x1</text>
+          <text x="350" y="110" text-anchor="middle" font-size="16" fill="#007a5a">✓</text>
+
+          <rect x="40" y="120" width="400" height="30" fill="#f9f9f9"/>
+          <text x="120" y="140" text-anchor="middle" font-size="13" fill="#1d1c1d">MODERATOR</text>
+          <rect x="210" y="126" width="60" height="18" rx="4" fill="#dbeafe"/>
+          <text x="240" y="139" text-anchor="middle" font-size="11" fill="#1e40af" font-weight="600">0x10</text>
+          <text x="350" y="140" text-anchor="middle" font-size="16" fill="#007a5a">✓</text>
+
+          <rect x="40" y="150" width="400" height="30" fill="white"/>
+          <text x="120" y="170" text-anchor="middle" font-size="13" fill="#1d1c1d">PUBLISHER</text>
+          <rect x="207" y="156" width="66" height="18" rx="4" fill="#dbeafe"/>
+          <text x="240" y="169" text-anchor="middle" font-size="11" fill="#1e40af" font-weight="600">0x100</text>
+          <text x="350" y="170" text-anchor="middle" font-size="16" fill="#007a5a">✓</text>
+
+          <rect x="40" y="180" width="400" height="30" fill="#f9f9f9"/>
+          <text x="120" y="200" text-anchor="middle" font-size="13" fill="#1d1c1d">VIEWER</text>
+          <rect x="203" y="186" width="74" height="18" rx="4" fill="#dbeafe"/>
+          <text x="240" y="199" text-anchor="middle" font-size="11" fill="#1e40af" font-weight="600">0x1000</text>
+          <text x="350" y="200" text-anchor="middle" font-size="16" fill="#007a5a">✓</text>
+
+          <rect x="40" y="210" width="400" height="30" fill="white"/>
+          <text x="120" y="230" text-anchor="middle" font-size="13" fill="#1d1c1d">custom:legal</text>
+          <rect x="197" y="216" width="86" height="18" rx="4" fill="#f3e8ff"/>
+          <text x="240" y="229" text-anchor="middle" font-size="11" fill="#7e22ce" font-weight="600">nybble 16</text>
+          <text x="350" y="230" text-anchor="middle" font-size="16" fill="#bbb">✗</text>
+
+          <rect x="40" y="240" width="400" height="30" fill="#f9f9f9"/>
+          <text x="120" y="260" text-anchor="middle" font-size="13" fill="#1d1c1d">custom:auditor</text>
+          <rect x="197" y="246" width="86" height="18" rx="4" fill="#f3e8ff"/>
+          <text x="240" y="259" text-anchor="middle" font-size="11" fill="#7e22ce" font-weight="600">nybble 17</text>
+          <text x="350" y="260" text-anchor="middle" font-size="16" fill="#007a5a">✓</text>
+
+          <text x="240" y="310" text-anchor="middle" font-size="12" fill="#616061">All permissions are on-chain. One tx to grant. One tx to revoke.</text>
+          <text x="240" y="328" text-anchor="middle" font-size="12" fill="#616061">No vendor admin panel. No support ticket. No lock-in.</text>
+        </svg>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="section" id="features">
-  <div class="section-label">Solution</div>
-  <h2 class="section-title">Everything Teams has. Nothing Teams leaks.</h2>
-  <p class="section-sub">Full feature parity with Microsoft Teams — zero external server dependency, zero surveillance surface.</p>
+<!-- ── STATS ────────────────────────────────────────────── -->
+<section class="stats-band">
+  <div class="stats-inner">
+    <div>
+      <div class="stat-num" data-target="100" data-suffix="B+">$0B+</div>
+      <div class="stat-label">Enterprise comms TAM</div>
+    </div>
+    <div>
+      <div class="stat-num" data-target="630" data-prefix="$" data-suffix="K">$0K</div>
+      <div class="stat-label">Avg enterprise Teams spend/yr</div>
+    </div>
+    <div>
+      <div class="stat-num" data-target="0">0</div>
+      <div class="stat-label">Relays that see your traffic</div>
+    </div>
+    <div>
+      <div class="stat-num" data-target="100" data-suffix="%">0%</div>
+      <div class="stat-label">On-chain identity ownership</div>
+    </div>
+  </div>
+</section>
 
+<!-- ── PROBLEM ──────────────────────────────────────────── -->
+<section class="problem-section" id="problem">
+  <div class="section-header">
+    <h2>Why the old way is broken</h2>
+    <p>Every major comms platform is a liability waiting to be served. Three real incidents, three real consequences.</p>
+  </div>
+  <div class="incident-cards">
+    <div class="incident-card">
+      <span class="badge">SEC Subpoena · 2023</span>
+      <h3>Sushi DAO</h3>
+      <p>SEC subpoenaed the DAO and its CEO. They coordinated on Discord. The entire communication graph — who spoke to whom, when, how often — was exposed in discovery.</p>
+    </div>
+    <div class="incident-card">
+      <span class="badge">$35M Freeze · 2023</span>
+      <h3>SpartacusDAO</h3>
+      <p>Lawsuit served via Discord DM. $35M freeze upheld. Discord accepted legal service on behalf of users. No consent, no warning — the DM was legally binding delivery.</p>
+    </div>
+    <div class="incident-card">
+      <span class="badge">Court Subpoena · 2023</span>
+      <h3>Path Network</h3>
+      <p>US court subpoenaed Discord for account data and complete login history. Discord complied. IP addresses, device fingerprints, session logs — all handed over.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ─────────────────────────────────────────── -->
+<section class="features-section" id="protocol">
+  <div class="section-header" style="max-width:1100px;margin:0 auto 0;">
+    <h2>The full stack, rebuilt for privacy</h2>
+    <p>Six layers, each designed so no single party can surveil your team.</p>
+  </div>
   <div class="features-grid">
-    <div class="feat">
-      <div class="feat-icon" style="background:rgba(124,92,252,0.12)">🧅</div>
-      <h3>Zero IP Exposure</h3>
-      <p>Both endpoints are Tor v3 onion services. No STUN, no TURN, no relay. Your IP never touches any server.</p>
+    <div class="feature-card">
+      <div class="feature-icon">🧅</div>
+      <h3>Tor Transport</h3>
+      <p>No IP exposed, no relay, both endpoints are ephemeral v3 onion services. Tor circuit prevents traffic analysis.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon" style="background:rgba(56,189,248,0.12)">🔐</div>
-      <h3>Noise_XX Encryption</h3>
-      <p>X25519 key exchange + ChaCha20-Poly1305 AEAD on every connection. Implemented from scratch on @noble/curves.</p>
+    <div class="feature-card">
+      <div class="feature-icon">🔐</div>
+      <h3>Noise_XX E2E</h3>
+      <p>X25519 key exchange, ChaCha20-Poly1305 AEAD on every byte. HKDF-SHA256 derivation. No TLS, no OpenSSL dependency.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon" style="background:rgba(34,197,94,0.12)">👤</div>
-      <h3>ENSv2 On-Chain Identity</h3>
-      <p>Every user is <code style="color:#7c5cfc;font-size:0.82rem">alice.weave.eth</code>. Every org is <code style="color:#7c5cfc;font-size:0.82rem">acme.weave.eth</code>. Roles stored in a 256-bit EAC bitmap on Ethereum.</p>
+    <div class="feature-card">
+      <div class="feature-icon">🪪</div>
+      <h3>ENSv2 Identity</h3>
+      <p><code>*.weave.eth</code> subnames on Ethereum. ERC-5564 stealth addresses. Wildcard resolver — one deployment for all orgs.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon" style="background:rgba(251,191,36,0.1)">🗺️</div>
-      <h3>Destroyed Graph</h3>
-      <p>ERC-5564 stealth addresses — one-time keys per session. The communication graph cannot be reconstructed.</p>
+    <div class="feature-card">
+      <div class="feature-icon">📦</div>
+      <h3>Arkiv Messages</h3>
+      <p>Decentralized message storage. Client-side encrypted before upload. Time-scoped fetch. Key versions track rotations.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon" style="background:rgba(124,92,252,0.12)">📦</div>
-      <h3>Arkiv Message Storage</h3>
-      <p>Messages stored on Arkiv — decentralized data layer on Ethereum. Ciphertext only. Per-channel symmetric keys, rotated on membership change.</p>
+    <div class="feature-card">
+      <div class="feature-icon">⛓️</div>
+      <h3>On-chain Roles</h3>
+      <p>EAC 256-bit bitmap. Custom org roles in nybbles 16–63 via WeaveRoleRegistry. Grant and revoke with a single tx.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon" style="background:rgba(56,189,248,0.12)">🔒</div>
-      <h3>CRE Confidential Writes</h3>
-      <p>ENS transactions signed in a Go WASM confidential workflow. The private key never touches the frontend.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ARCHITECTURE -->
-<section class="section" id="architecture">
-  <div class="section-label">Architecture</div>
-  <h2 class="section-title">How it all connects</h2>
-  <p class="section-sub">A fully decentralized stack — no single point of control, no relay that can be subpoenaed.</p>
-
-  <div class="arch-wrap">
-    <!-- Architecture SVG -->
-    <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" width="100%" style="display:block;max-width:700px;margin:0 auto">
-      <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 Z" fill="#3a3a5a"/>
-        </marker>
-        <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 Z" fill="#7c5cfc"/>
-        </marker>
-        <marker id="arrow-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 Z" fill="#38bdf8"/>
-        </marker>
-      </defs>
-
-      <!-- Electron App box (center-left) -->
-      <rect x="10" y="118" width="145" height="80" rx="10" fill="#13131a" stroke="#7c5cfc" stroke-width="1.5"/>
-      <text x="82" y="150" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#e8e8f0" text-anchor="middle">Electron App</text>
-      <text x="82" y="167" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">Main + Renderer</text>
-      <text x="82" y="181" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">TypeScript · viem</text>
-
-      <!-- Arrow to Tor -->
-      <line x1="155" y1="145" x2="238" y2="110" stroke="#7c5cfc" stroke-width="1.5" marker-end="url(#arrow-accent)" stroke-dasharray="5,3">
-        <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.2s" repeatCount="indefinite"/>
-      </line>
-      <text x="185" y="118" font-family="Inter,sans-serif" font-size="9" fill="#5a5a72" transform="rotate(-25,185,118)">onion transport</text>
-
-      <!-- Arrow to Arkiv -->
-      <line x1="155" y1="172" x2="238" y2="210" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arrow-cyan)" stroke-dasharray="5,3">
-        <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.5s" repeatCount="indefinite"/>
-      </line>
-      <text x="177" y="205" font-family="Inter,sans-serif" font-size="9" fill="#5a5a72" transform="rotate(25,177,205)">messages</text>
-
-      <!-- Arrow to CRE -->
-      <line x1="82" y1="198" x2="82" y2="262" stroke="#5a5a72" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,3">
-        <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="1.8s" repeatCount="indefinite"/>
-      </line>
-      <text x="90" y="240" font-family="Inter,sans-serif" font-size="9" fill="#5a5a72">ENS writes</text>
-
-      <!-- Tor box (top-center) -->
-      <rect x="240" y="60" width="140" height="70" rx="10" fill="#13131a" stroke="#7c5cfc" stroke-width="1.2"/>
-      <text x="310" y="90" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#a78bfa" text-anchor="middle">Tor Network</text>
-      <text x="310" y="107" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">v3 Onion Services</text>
-      <text x="310" y="120" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">No IP exposure</text>
-
-      <!-- Arrow from Tor to Peer -->
-      <line x1="380" y1="95" x2="460" y2="95" stroke="#7c5cfc" stroke-width="1.5" marker-end="url(#arrow-accent)" stroke-dasharray="5,3">
-        <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.2s" repeatCount="indefinite"/>
-      </line>
-
-      <!-- Peer node box -->
-      <rect x="460" y="60" width="130" height="70" rx="10" fill="#13131a" stroke="#3a3a5a" stroke-width="1.2"/>
-      <text x="525" y="90" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#e8e8f0" text-anchor="middle">Peer Node</text>
-      <text x="525" y="107" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">Also Tor onion</text>
-      <text x="525" y="120" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">Noise_XX session</text>
-
-      <!-- DHT Discovery box (top-right) -->
-      <rect x="600" y="60" width="95" height="70" rx="10" fill="#13131a" stroke="#3a3a5a" stroke-width="1"/>
-      <text x="647" y="90" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="700" fill="#e8e8f0" text-anchor="middle">DHT</text>
-      <text x="647" y="105" font-family="Inter,sans-serif" font-size="8.5" fill="#5a5a72" text-anchor="middle">BitTorrent</text>
-      <text x="647" y="118" font-family="Inter,sans-serif" font-size="8.5" fill="#5a5a72" text-anchor="middle">+ Nostr</text>
-      <line x1="590" y1="95" x2="600" y2="95" stroke="#3a3a5a" stroke-width="1" marker-end="url(#arrow)"/>
-
-      <!-- Arkiv box (bottom-center) -->
-      <rect x="240" y="182" width="140" height="70" rx="10" fill="#13131a" stroke="#38bdf8" stroke-width="1.2"/>
-      <text x="310" y="212" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#38bdf8" text-anchor="middle">Arkiv</text>
-      <text x="310" y="229" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">Decentralized storage</text>
-      <text x="310" y="242" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">E2E encrypted msgs</text>
-
-      <!-- Arrow from Arkiv to ENS -->
-      <line x1="380" y1="217" x2="460" y2="217" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arrow-cyan)" stroke-dasharray="5,3">
-        <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.5s" repeatCount="indefinite"/>
-      </line>
-
-      <!-- ENS / Ethereum box -->
-      <rect x="460" y="182" width="130" height="70" rx="10" fill="#13131a" stroke="#3a3a5a" stroke-width="1.2"/>
-      <text x="525" y="211" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#e8e8f0" text-anchor="middle">Ethereum</text>
-      <text x="525" y="228" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">ENSv2 Registry</text>
-      <text x="525" y="241" font-family="Inter,sans-serif" font-size="9.5" fill="#5a5a72" text-anchor="middle">Role bitmap · Sepolia</text>
-
-      <!-- CRE box (bottom-left) -->
-      <rect x="10" y="263" width="145" height="48" rx="10" fill="#13131a" stroke="#5a5a72" stroke-width="1"/>
-      <text x="82" y="284" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="#e8e8f0" text-anchor="middle">CRE (Go WASM)</text>
-      <text x="82" y="300" font-family="Inter,sans-serif" font-size="9" fill="#5a5a72" text-anchor="middle">Confidential ENS writes</text>
-
-      <!-- CRE arrow to Ethereum -->
-      <path d="M155 287 Q310 340 460 240" stroke="#5a5a72" stroke-width="1" fill="none" marker-end="url(#arrow)" stroke-dasharray="4,3">
-        <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="2s" repeatCount="indefinite"/>
-      </path>
-      <text x="295" y="330" font-family="Inter,sans-serif" font-size="8.5" fill="#3a3a4a">signed tx</text>
-    </svg>
-  </div>
-</section>
-
-<!-- COMPARE -->
-<section class="section" id="compare">
-  <div class="section-label">Comparison</div>
-  <h2 class="section-title">Weave vs. the surveillance stack</h2>
-  <p class="section-sub">Not marketing copy — cryptographic guarantees enforced by the protocol.</p>
-
-  <div class="cmp-wrap">
-    <table class="cmp-table">
-      <thead>
-        <tr>
-          <th>Property</th>
-          <th class="col-weave">Weave</th>
-          <th>Microsoft Teams</th>
-          <th>Slack Enterprise</th>
-        </tr>
-      </thead>
-      <tbody id="cmp-body">
-        <tr>
-          <td>IP hidden from relay</td>
-          <td class="col-weave yes">✓ Yes (Tor v3)</td>
-          <td class="no">✗ No</td>
-          <td class="no">✗ No</td>
-        </tr>
-        <tr>
-          <td>E2E encrypted</td>
-          <td class="col-weave yes">✓ Noise_XX</td>
-          <td class="no">✗ Partial</td>
-          <td class="no">✗ In transit only</td>
-        </tr>
-        <tr>
-          <td>Communication graph</td>
-          <td class="col-weave yes">✓ Destroyed</td>
-          <td class="no">✗ Logged</td>
-          <td class="no">✗ Logged</td>
-        </tr>
-        <tr>
-          <td>On-chain identity</td>
-          <td class="col-weave yes">✓ ENSv2</td>
-          <td class="no">✗ Microsoft AD</td>
-          <td class="no">✗ Vendor DB</td>
-        </tr>
-        <tr>
-          <td>Subpoenable</td>
-          <td class="col-weave yes">✓ No relay to subpoena</td>
-          <td class="no">✗ CLOUD Act</td>
-          <td class="no">✗ CLOUD Act</td>
-        </tr>
-        <tr>
-          <td>Cost (10K seats)</td>
-          <td class="col-weave yes">✓ Self-hosted</td>
-          <td class="no">✗ $630K/yr</td>
-          <td class="no">✗ $150K–$300K/yr</td>
-        </tr>
-        <tr>
-          <td>Vendor lock-in</td>
-          <td class="col-weave yes">✓ Zero</td>
-          <td class="no">✗ Full</td>
-          <td class="no">✗ Full</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<!-- MARKET -->
-<section class="section" id="market">
-  <div class="section-label">Market</div>
-  <h2 class="section-title">A $100B market paying for surveillance</h2>
-  <p class="section-sub">Every enterprise paying a Slack invoice, every DAO coordinating on Discord, every legal team on Teams — that's the market.</p>
-
-  <div class="market-grid">
-    <div class="market-card">
-      <div class="market-num">$100B<span style="font-size:1.5rem">+</span></div>
-      <div class="market-label">Enterprise collaboration software market in 2024. Growing to $160B+ by 2034 at ~12% CAGR. Every dollar funds surveillance infrastructure.</div>
-    </div>
-    <div class="market-card">
-      <div class="market-num">$630K</div>
-      <div class="market-label">Per year for a 10,000-seat Teams deployment. 320M MAU already on the platform. Each one a subpoena target.</div>
-    </div>
-  </div>
-
-  <div class="stat-cards">
-    <div class="stat-card">
-      <div class="stat-number">$<span class="counter" data-target="170">0</span><span class="unit">M</span></div>
-      <div class="stat-label">DAO tooling market (2024) → $333M by 2032 at 18% CAGR. Every DAO currently uses Discord or Telegram.</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number"><span class="counter" data-target="320">0</span><span class="unit">M</span></div>
-      <div class="stat-label">Microsoft Teams monthly active users — each one logged, each communication graph owned by Microsoft.</div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>CRE Signing</h3>
+      <p>Go WASM confidential workflow. ENS transactions signed inside CRE — the private key never reaches the frontend process.</p>
     </div>
   </div>
 </section>
 
-<!-- CTA -->
-<section class="section">
-  <div class="cta-block">
-    <h2>Built for ETHGlobal</h2>
-    <p>ENSv2 Best Use · Chainlink CRE Confidential Workflows · Open source, Ethereum Sepolia.</p>
-    <div class="cta-links">
-      <a href="https://github.com/Philotheephilix/weave" class="btn-primary">View on GitHub</a>
-      <a href="https://sepolia.etherscan.io/address/0x47f73c5F82a43Cc4b3a007131Af0E84543146950" class="chain-badge" target="_blank">
-        <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="rgba(56,189,248,0.3)"/><circle cx="5" cy="5" r="2.5" fill="#38bdf8"/></svg>
-        WeaveRegistrar on Sepolia ↗
-      </a>
-      <a href="https://sepolia.etherscan.io/address/0xE324fB0Fb00621094B8e81EA71E28D4263445377" class="chain-badge" target="_blank">
-        <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="rgba(56,189,248,0.3)"/><circle cx="5" cy="5" r="2.5" fill="#38bdf8"/></svg>
-        WildcardResolver on Sepolia ↗
-      </a>
-    </div>
+<!-- ── COMPARE ──────────────────────────────────────────── -->
+<section class="comparison-section" id="compare">
+  <div class="section-header">
+    <h2>Every alternative leaks something. Weave doesn't.</h2>
+    <p>A direct comparison across the four platforms your team is likely already using.</p>
+  </div>
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Weave</th>
+        <th>Teams</th>
+        <th>Slack</th>
+        <th>Discord</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>IP hidden from relay</td>
+        <td><span class="check-yes">✓</span></td>
+        <td><span class="check-no">✗</span></td>
+        <td><span class="check-no">✗</span></td>
+        <td><span class="check-no">✗</span></td>
+      </tr>
+      <tr>
+        <td>E2E encrypted</td>
+        <td><span class="check-yes">✓</span></td>
+        <td><span class="check-partial">Partial</span></td>
+        <td><span class="check-no">✗</span></td>
+        <td><span class="check-no">✗</span></td>
+      </tr>
+      <tr>
+        <td>Communication graph destroyed</td>
+        <td><span class="check-yes">✓</span></td>
+        <td><span class="check-no">✗</span></td>
+        <td><span class="check-no">✗</span></td>
+        <td><span class="check-no">✗</span></td>
+      </tr>
+      <tr>
+        <td>On-chain identity</td>
+        <td><span class="check-yes">✓</span></td>
+        <td><span class="check-no">✗</span></td>
+        <td><span class="check-no">✗</span></td>
+        <td><span class="check-no">✗</span></td>
+      </tr>
+      <tr>
+        <td>Subpoenable</td>
+        <td><span class="check-yes">✗</span></td>
+        <td><span class="check-no">✓</span></td>
+        <td><span class="check-no">✓</span></td>
+        <td><span class="check-no">✓</span></td>
+      </tr>
+      <tr>
+        <td>Vendor lock-in</td>
+        <td><span class="check-yes">✗</span></td>
+        <td><span class="check-no">✓</span></td>
+        <td><span class="check-no">✓</span></td>
+        <td><span class="check-no">✓</span></td>
+      </tr>
+      <tr>
+        <td>Annual cost (10K seats)</td>
+        <td style="color:var(--green);font-weight:700;">Free</td>
+        <td>$630K</td>
+        <td>$3M+</td>
+        <td>Free*</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="text-align:center;color:var(--muted);font-size:13px;margin-top:16px;">*Discord is free until a subpoena hits. Then it's not.</p>
+</section>
+
+<!-- ── BOTTOM CTA ────────────────────────────────────────── -->
+<section class="bottom-cta">
+  <h2>See all that Weave can do.</h2>
+  <p>Built for the teams the current stack was never designed to protect.</p>
+  <div class="bottom-cta-actions">
+    <a href="#" class="btn-outline-white">Get started</a>
+    <a href="https://github.com" class="btn-outline-white">View on GitHub →</a>
   </div>
 </section>
 
-<!-- FOOTER -->
+<!-- ── FOOTER ────────────────────────────────────────────── -->
 <footer>
-  <img src="waeve.png" alt="Weave" style="height:28px;width:auto;display:block;" />
-  <span>Built for <a href="https://ethglobal.com" target="_blank">ETHGlobal</a> · Ethereum Sepolia · No Starknet</span>
-  <span>
-    <a href="https://github.com/Philotheephilix/weave" target="_blank">GitHub</a> ·
-    <a href="https://sepolia.etherscan.io" target="_blank">Sepolia Explorer</a>
-  </span>
+  <div class="footer-inner">
+    <div class="footer-cols">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#">Channels</a>
+        <a href="#">Voice &amp; Video</a>
+        <a href="#">File Sharing</a>
+        <a href="#">Admin Panel</a>
+        <a href="#">Roles</a>
+      </div>
+      <div class="footer-col">
+        <h4>Protocol</h4>
+        <a href="#">ENSv2 Identity</a>
+        <a href="#">Arkiv Storage</a>
+        <a href="#">Noise_XX</a>
+        <a href="#">Tor Transport</a>
+        <a href="#">CRE Workflow</a>
+      </div>
+      <div class="footer-col">
+        <h4>Developers</h4>
+        <a href="#">GitHub</a>
+        <a href="#">Documentation</a>
+        <a href="#">Contracts (Sepolia)</a>
+        <a href="#">API Reference</a>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <a href="#">Architecture</a>
+        <a href="#">Whitepaper</a>
+        <a href="#">Security Model</a>
+        <a href="#">Changelog</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="#">Discord (ironic, we know)</a>
+        <a href="#">Twitter / X</a>
+        <a href="#">Farcaster</a>
+        <a href="#">Blog</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-bottom-logo">
+        <img src="waeve.png" alt="Weave" />
+      </div>
+      <div class="footer-bottom-right">
+        <span>© 2024 Weave. Open source.</span>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
+  </div>
 </footer>
 
 <script>
-  // Count-up animation on scroll
-  const counters = document.querySelectorAll('.counter');
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const el = entry.target;
-      const target = parseInt(el.dataset.target, 10);
-      const duration = 1400;
-      const start = performance.now();
-      function tick(now) {
-        const elapsed = now - start;
-        const progress = Math.min(elapsed / duration, 1);
-        const ease = 1 - Math.pow(1 - progress, 3);
-        el.textContent = Math.round(ease * target).toLocaleString();
-        if (progress < 1) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-      observer.unobserve(el);
-    });
-  }, { threshold: 0.4 });
-  counters.forEach(c => observer.observe(c));
+  // ── Carousel ──────────────────────────────────────────
+  const items = document.querySelectorAll('.carousel-item')
+  const panels = document.querySelectorAll('.panel-slide')
+  let current = 0
+  let timer = null
 
-  // Comparison table stagger fade
-  const rows = document.querySelectorAll('#cmp-body tr');
-  const rowObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const tr = entry.target;
-      const idx = Array.from(rows).indexOf(tr);
-      setTimeout(() => tr.classList.add('visible'), idx * 80);
-      rowObserver.unobserve(tr);
-    });
-  }, { threshold: 0.1 });
-  rows.forEach(r => rowObserver.observe(r));
+  function activate(idx) {
+    items.forEach((item, i) => {
+      item.classList.toggle('active', i === idx)
+    })
+    panels.forEach((panel, i) => {
+      panel.classList.toggle('active', i === idx)
+    })
+    current = idx
+  }
+
+  function next() {
+    activate((current + 1) % items.length)
+  }
+
+  function startTimer() {
+    clearInterval(timer)
+    timer = setInterval(next, 8000)
+  }
+
+  items.forEach((item, i) => {
+    item.addEventListener('click', () => {
+      activate(i)
+      startTimer()
+    })
+  })
+
+  startTimer()
+
+  // ── Stats count-up ────────────────────────────────────
+  const statEls = document.querySelectorAll('.stat-num[data-target]')
+  let statsAnimated = false
+
+  function animateStats() {
+    if (statsAnimated) return
+    statsAnimated = true
+    statEls.forEach(el => {
+      const target = parseInt(el.dataset.target)
+      const prefix = el.dataset.prefix || ''
+      const suffix = el.dataset.suffix || ''
+      const duration = 1400
+      const start = performance.now()
+      function step(now) {
+        const elapsed = Math.min(now - start, duration)
+        const val = Math.round((elapsed / duration) * target)
+        el.textContent = prefix + val + suffix
+        if (elapsed < duration) requestAnimationFrame(step)
+      }
+      requestAnimationFrame(step)
+    })
+  }
+
+  const statsBand = document.querySelector('.stats-band')
+  const statsObs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) animateStats()
+  }, { threshold: 0.4 })
+  statsObs.observe(statsBand)
+
+  // ── Incident card fade-in ─────────────────────────────
+  const cards = document.querySelectorAll('.incident-card')
+  const cardObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), 100 * [...cards].indexOf(e.target))
+      }
+    })
+  }, { threshold: 0.2 })
+  cards.forEach(c => cardObs.observe(c))
 </script>
 </body>
 </html>
