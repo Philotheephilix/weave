@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#c8e8f4"/>
+      <stop offset="50%" style="stop-color:#daeef8"/>
+      <stop offset="100%" style="stop-color:#d0f0e8"/>
+    </linearGradient>
+    <linearGradient id="nodeBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a6b8a"/>
+      <stop offset="100%" style="stop-color:#0d3a52"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#0d3a52"/>
+    </marker>
+    <marker id="arrow-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#7ab8cc"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#22c55e"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#d97706"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="560" fill="url(#bg)" rx="16"/>
+
+  <!-- Top bar -->
+  <rect width="900" height="5" fill="#0d3a52" opacity="0.9"/>
+
+  <!-- Dot grid top-right -->
+  <g opacity="0.12">
+    <circle cx="760" cy="30" r="2.5" fill="#0d3a52"/><circle cx="784" cy="30" r="2.5" fill="#0d3a52"/><circle cx="808" cy="30" r="2.5" fill="#0d3a52"/><circle cx="832" cy="30" r="2.5" fill="#0d3a52"/><circle cx="856" cy="30" r="2.5" fill="#0d3a52"/>
+    <circle cx="760" cy="54" r="2.5" fill="#0d3a52"/><circle cx="784" cy="54" r="2.5" fill="#0d3a52"/><circle cx="808" cy="54" r="2.5" fill="#0d3a52"/><circle cx="832" cy="54" r="2.5" fill="#0d3a52"/><circle cx="856" cy="54" r="2.5" fill="#0d3a52"/>
+    <circle cx="760" cy="78" r="2.5" fill="#0d3a52"/><circle cx="784" cy="78" r="2.5" fill="#0d3a52"/><circle cx="808" cy="78" r="2.5" fill="#0d3a52"/><circle cx="832" cy="78" r="2.5" fill="#0d3a52"/><circle cx="856" cy="78" r="2.5" fill="#0d3a52"/>
+  </g>
+
+  <!-- Title -->
+  <text x="40" y="42" font-family="Georgia,serif" font-size="22" font-weight="700" fill="#0d3a52" letter-spacing="-0.5">Weave — Message Flow</text>
+  <text x="40" y="62" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" fill="#1a6b8a">online path · offline fallback via Arkiv</text>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- ROW 1: UserA → ENS → CRE                          -->
+  <!-- ─────────────────────────────────────────────────── -->
+
+  <!-- UserA node -->
+  <rect x="40" y="100" width="110" height="52" rx="10" fill="url(#nodeBlue)" stroke="#3aafc8" stroke-width="1.5"/>
+  <text x="95" y="122" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" fill="#c8e8f4">UserA</text>
+  <text x="95" y="140" text-anchor="middle" font-family="monospace" font-size="9" fill="#7ab8cc">alice.acme.weave.eth</text>
+
+  <!-- arrow A → ENS -->
+  <line x1="150" y1="126" x2="224" y2="126" stroke="#0d3a52" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="187" y="118" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="9" fill="#0d3a52">1. lookup bob.*</text>
+
+  <!-- ENS node -->
+  <rect x="225" y="100" width="110" height="52" rx="10" fill="#fff" stroke="#0d3a52" stroke-width="1.5"/>
+  <text x="280" y="120" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" fill="#0d3a52">ENS Registry</text>
+  <text x="280" y="136" text-anchor="middle" font-family="monospace" font-size="9" fill="#1a6b8a">bob.acme.weave.eth</text>
+  <text x="280" y="148" text-anchor="middle" font-family="monospace" font-size="9" fill="#1a6b8a">text records</text>
+
+  <!-- arrow ENS → CRE (return) -->
+  <line x1="335" y1="126" x2="409" y2="126" stroke="#0d3a52" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="372" y="118" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="9" fill="#0d3a52">2. noise pubkey</text>
+  <text x="372" y="128" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="9" fill="#0d3a52">+ onion addr</text>
+
+  <!-- CRE node -->
+  <rect x="410" y="100" width="110" height="52" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="465" y="120" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" fill="#7c3aed">CRE</text>
+  <text x="465" y="136" text-anchor="middle" font-family="monospace" font-size="9" fill="#7c3aed">Go WASM</text>
+  <text x="465" y="148" text-anchor="middle" font-family="monospace" font-size="9" fill="#7c3aed">resolves bob.onion</text>
+
+  <!-- arrow CRE → back to UserA: encrypt -->
+  <line x1="465" y1="152" x2="465" y2="184" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-purple)"/>
+  <text x="490" y="172" font-family="Helvetica Neue,Arial,sans-serif" font-size="9" fill="#7c3aed">3. returns onion addr</text>
+
+  <!-- Encrypt step box (below CRE) -->
+  <rect x="390" y="186" width="150" height="42" rx="8" fill="#f5f0ff" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <text x="465" y="204" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="700" fill="#7c3aed">🔐 Encrypt message</text>
+  <text x="465" y="219" text-anchor="middle" font-family="monospace" font-size="9" fill="#7c3aed">Noise_XX · ChaCha20-Poly1305</text>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- DIAMOND: UserB online?                             -->
+  <!-- ─────────────────────────────────────────────────── -->
+
+  <!-- line down from encrypt box -->
+  <line x1="465" y1="228" x2="465" y2="268" stroke="#0d3a52" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Diamond -->
+  <polygon points="465,270 515,308 465,346 415,308" fill="#fff" stroke="#0d3a52" stroke-width="1.5"/>
+  <text x="465" y="303" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="700" fill="#0d3a52">UserB</text>
+  <text x="465" y="317" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="700" fill="#0d3a52">online?</text>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- YES path → right: Tor → UserB                     -->
+  <!-- ─────────────────────────────────────────────────── -->
+
+  <!-- YES label + arrow right -->
+  <line x1="515" y1="308" x2="595" y2="308" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <text x="555" y="300" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="700" fill="#22c55e">YES</text>
+
+  <!-- Tor cloud shape -->
+  <ellipse cx="650" cy="290" rx="18" ry="11" fill="#7c3aed" opacity="0.15"/>
+  <ellipse cx="668" cy="284" rx="14" ry="9" fill="#7c3aed" opacity="0.15"/>
+  <ellipse cx="684" cy="290" rx="16" ry="10" fill="#7c3aed" opacity="0.15"/>
+  <ellipse cx="668" cy="300" rx="30" ry="12" fill="#7c3aed" opacity="0.18"/>
+  <rect x="600" y="288" width="136" height="48" rx="10" fill="none" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="668" y="308" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" fill="#7c3aed">Tor Network</text>
+  <text x="668" y="323" text-anchor="middle" font-family="monospace" font-size="9" fill="#7c3aed">onion-to-onion</text>
+  <text x="668" y="334" text-anchor="middle" font-family="monospace" font-size="9" fill="#7c3aed">no relay · no IP</text>
+
+  <!-- arrow Tor → UserB -->
+  <line x1="736" y1="312" x2="790" y2="312" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <!-- UserB node online -->
+  <rect x="792" y="288" width="92" height="52" rx="10" fill="url(#nodeBlue)" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="838" y="310" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" fill="#c8e8f4">UserB</text>
+  <text x="838" y="326" text-anchor="middle" font-family="monospace" font-size="9" fill="#7ab8cc">bob.acme</text>
+  <text x="838" y="338" text-anchor="middle" font-family="monospace" font-size="9" fill="#22c55e">🟢 online</text>
+
+  <!-- deliver label -->
+  <text x="763" y="304" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="9" fill="#22c55e">deliver</text>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- NO path → down: Arkiv                             -->
+  <!-- ─────────────────────────────────────────────────── -->
+
+  <!-- NO label + arrow down -->
+  <line x1="465" y1="346" x2="465" y2="400" stroke="#d97706" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+  <text x="478" y="378" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="700" fill="#d97706">NO</text>
+
+  <!-- Arkiv node -->
+  <rect x="368" y="402" width="195" height="58" rx="10" fill="#fff" stroke="#d97706" stroke-width="1.5"/>
+  <text x="465" y="424" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" fill="#d97706">Arkiv</text>
+  <text x="465" y="440" text-anchor="middle" font-family="monospace" font-size="9" fill="#d97706">store encrypted ciphertext</text>
+  <text x="465" y="454" text-anchor="middle" font-family="monospace" font-size="9" fill="#9a7030">no plaintext · time-scoped · on-chain</text>
+
+  <!-- arrow Arkiv → UserB offline (pull) -->
+  <line x1="563" y1="431" x2="660" y2="431" stroke="#d97706" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow-amber)"/>
+
+  <!-- UserB offline node -->
+  <rect x="662" y="408" width="92" height="52" rx="10" fill="url(#nodeBlue)" stroke="#d97706" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="708" y="430" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" fill="#c8e8f4">UserB</text>
+  <text x="708" y="446" text-anchor="middle" font-family="monospace" font-size="9" fill="#7ab8cc">bob.acme</text>
+  <text x="708" y="458" text-anchor="middle" font-family="monospace" font-size="9" fill="#d97706">🔴 offline → pulls</text>
+
+  <!-- pull label -->
+  <text x="611" y="422" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="9" fill="#d97706">future pull</text>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- Legend                                            -->
+  <!-- ─────────────────────────────────────────────────── -->
+  <rect x="40" y="490" width="820" height="1" fill="#0d3a52" opacity="0.15"/>
+  <text x="40" y="510" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" fill="#1a6b8a">
+    <tspan font-weight="700">1</tspan> lookup ENS text records →
+    <tspan font-weight="700">  2</tspan> get noise pubkey + onion addr →
+    <tspan font-weight="700">  3</tspan> CRE resolves bob.onion →
+    <tspan font-weight="700">  4a</tspan> online: Tor onion-to-onion →
+    <tspan font-weight="700">  4b</tspan> offline: store in Arkiv
+  </text>
+  <text x="40" y="530" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" fill="#7ab8cc">No server sees plaintext. No relay knows both endpoints. No IP is ever exchanged.  ·  weave.davinciin.xyz</text>
+</svg>
