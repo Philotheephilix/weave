@@ -201,7 +201,7 @@ export default function Sidebar(props: SidebarProps) {
 
         {rail === 'calls' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {callLog.map((k, i) => <CallLogItem key={i} entry={k} />)}
+            {callLog.map((k) => <CallLogItem key={k.id} entry={k} />)}
           </div>
         )}
 
@@ -220,8 +220,8 @@ export default function Sidebar(props: SidebarProps) {
               <div style={{ fontSize: 13, color: 'rgba(32,30,29,.5)', padding: '12px 8px' }}>No members enrolled yet.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {members.map((m, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 8px', borderRadius: 2 }}>
+                {members.map((m) => (
+                  <div key={m.address} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 8px', borderRadius: 2 }}>
                     <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, background: '#eae9e9', color: '#444141', fontSize: 11, fontWeight: 600, borderRadius: 2, flexShrink: 0 }}>
                       {m.name.slice(0, 2).toUpperCase()}
                     </span>

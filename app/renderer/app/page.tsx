@@ -13,6 +13,7 @@ import DMView from '@/components/chat/DMView'
 import CallView from '@/components/calls/CallView'
 import CallsPageView from '@/components/calls/CallsPageView'
 import RingingModal from '@/components/calls/RingingModal'
+import IncomingCallModal from '@/components/calls/IncomingCallModal'
 
 import CreateChannelModal from '@/components/modals/CreateChannelModal'
 import InviteModal from '@/components/modals/InviteModal'
@@ -102,6 +103,7 @@ export default function WeaveApp() {
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const rtc = useTorCall()
   const activePeerLabelRef = useRef<string | null>(null)
+  const [pendingIncoming, setPendingIncoming] = useState<{ callerLabel: string; onionAddr: string } | null>(null)
 
   // Derive org name from handle — must be before any useEffect that uses it in dep arrays
   const orgName = (() => {
@@ -270,19 +272,13 @@ export default function WeaveApp() {
       const callerLabel = payload.from
       const onionAddr = payload.signal.onionAddr
       activePeerLabelRef.current = callerLabel
+      // Show the incoming call modal — do NOT auto-accept
+      setPendingIncoming({ callerLabel, onionAddr })
       setS(prev => ({ ...prev, ...ringingState(callerLabel, 'audio') }))
-      // Dial out to caller's onion, then start mic+audio pipeline
-      window.weave?.call?.initiate({ onionAddr }).then(async () => {
-        setS(prev => ({ ...prev, call: prev.call ? { ...prev.call, state: 'live' } : null, tick: 0 }))
-        await rtc.startAudioPipeline()
-      }).catch((err: Error) => {
-        say(`Call failed: ${err?.message ?? 'Tor dial error'}`)
-        setS(prev => ({ ...prev, call: null }))
-      })
     }
     window.weave?.on?.('weave:call:signal', handler as (...args: unknown[]) => void)
     return () => { window.weave?.off?.('weave:call:signal', handler as (...args: unknown[]) => void) }
-  }, [identity, rtc])
+  }, [identity])
 
   // Auto-transition ringing → live when Noise_XX handshake completes (caller side)
   useEffect(() => {
@@ -485,16 +481,14 @@ export default function WeaveApp() {
     }
     // For Guest role, resolve each handle and mint an expiring ERC-1155 token on-chain
     if (isGuest) {
-      handles.forEach(async (h) => {
-        try {
-          const resolved = await window.weave?.resolve?.(h)
-          const guestAddress = (resolved as { address?: string } | null)?.address
-          if (!guestAddress) return
-          const guestLabel = h.includes('.') ? h.split('.')[0] : h
-          const orgLabel = org
-          await window.weave?.org?.mintGuestToken?.({ orgLabel, guestLabel, guestAddress, expiryLabel: expiry })
-        } catch { /* best-effort */ }
-      })
+      Promise.allSettled(handles.map(async (h) => {
+        const resolved = await window.weave?.resolve?.(h)
+        const guestAddress = (resolved as { address?: string } | null)?.address
+        if (!guestAddress) return
+        const guestLabel = h.includes('.') ? h.split('.')[0] : h
+        const orgLabel = org
+        await window.weave?.org?.mintGuestToken?.({ orgLabel, guestLabel, guestAddress, expiryLabel: expiry })
+      })).catch(() => {})
     }
     say(`${n} ${n > 1 ? 'invites' : 'invite'} sent · ${isGuest ? 'guest token expires in ' + expiry : s.inviteRole.toLowerCase() + ' role on ensv2'}`)
   }
@@ -555,6 +549,26 @@ export default function WeaveApp() {
     say(`Call ended · ${mm}:${ss2}`)
   }
 
+  const acceptIncoming = async () => {
+    if (!pendingIncoming) return
+    const { onionAddr } = pendingIncoming
+    setPendingIncoming(null)
+    try {
+      await window.weave?.call?.initiate({ onionAddr })
+      setS(prev => ({ ...prev, call: prev.call ? { ...prev.call, state: 'live' } : null, tick: 0 }))
+      await rtc.startAudioPipeline()
+    } catch (err: unknown) {
+      say(`Call failed: ${err instanceof Error ? err.message : 'Tor dial error'}`)
+      setS(prev => ({ ...prev, call: null }))
+    }
+  }
+
+  const declineIncoming = () => {
+    setPendingIncoming(null)
+    setS(prev => ({ ...prev, call: null }))
+    activePeerLabelRef.current = null
+  }
+
   const sendCallChat = () => {
     const text = s.callDraft.trim()
     if (!text) return
@@ -562,7 +576,9 @@ export default function WeaveApp() {
     if (activePeerLabelRef.current !== null) {
       window.weave?.chat?.sendDM?.({ org: orgName, peerLabel: activePeerLabelRef.current, text }).catch(() => {})
     } else {
-      window.weave?.arkiv?.postMessage?.({ org: orgName, channel: s.call?.title ?? 'meet', keyVersion: 0, text }).catch(() => {})
+      const meetChannel = 'meet'
+      const keyVersion = (s.channelKeyVersions as Record<string, number>)[chanKey(s.team, meetChannel)] ?? 0
+      window.weave?.arkiv?.postMessage?.({ org: orgName, channel: meetChannel, keyVersion, text }).catch(() => {})
     }
   }
 
@@ -623,6 +639,7 @@ export default function WeaveApp() {
           adminHandle={identity.handle}
           onEnrolled={refreshMembers}
           onClose={() => { setShowEnrollModal(false); refreshMembers() }}
+          onCallMember={(label) => { setShowEnrollModal(false); ring(label, 'audio') }}
         />
       )}
 
@@ -693,6 +710,7 @@ export default function WeaveApp() {
               onStartCall={() => startMeet('#' + currentChan!.name + ' · Meet now')}
               showPrivacy={true}
               scrollToBottom={true}
+              isAdmin={identity?.handle?.split('.')[0] === 'admin'}
             />
           )}
 
@@ -759,7 +777,17 @@ export default function WeaveApp() {
             />
           )}
 
-          {isRinging && s.call && ringPerson && (
+          {isRinging && s.call && ringPerson && pendingIncoming && (
+            <IncomingCallModal
+              name={ringPerson.name}
+              initials={ringPerson.initials}
+              tint={ringPerson.tint}
+              ink={ringPerson.ink}
+              onAccept={acceptIncoming}
+              onDecline={declineIncoming}
+            />
+          )}
+          {isRinging && s.call && ringPerson && !pendingIncoming && (
             <RingingModal
               name={ringPerson.name}
               initials={ringPerson.initials}

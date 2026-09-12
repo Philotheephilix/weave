@@ -38,6 +38,7 @@ interface ChannelViewProps {
   onStartCall: () => void
   showPrivacy?: boolean
   scrollToBottom?: boolean
+  isAdmin?: boolean
 }
 
 export default function ChannelView(props: ChannelViewProps) {
@@ -123,13 +124,15 @@ export default function ChannelView(props: ChannelViewProps) {
               onOpenInvite={props.onOpenInvite}
               scrollToBottom={props.scrollToBottom}
             />
-            <MessageComposer
-              draft={draft}
-              placeholder={`Message #${ch.name}`}
-              onDraft={props.onDraft}
-              onSend={props.onSend}
-              onStartCall={props.onStartCall}
-            />
+            {(ch.kind !== 'announcement' || props.isAdmin) && (
+              <MessageComposer
+                draft={draft}
+                placeholder={ch.kind === 'announcement' ? `Post to #${ch.name}` : `Message #${ch.name}`}
+                onDraft={props.onDraft}
+                onSend={props.onSend}
+                onStartCall={props.onStartCall}
+              />
+            )}
           </>
         )}
 
