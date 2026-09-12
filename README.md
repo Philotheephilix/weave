@@ -1,4 +1,14 @@
-# Weave
+<p align="center">
+  <img src="docs/weave-banner.svg" alt="Weave — Private Comms. Zero Servers." width="100%"/>
+</p>
+
+<p align="center">
+  <strong>🌐 <a href="https://weave.davinciin.xyz">weave.davinciin.xyz</a></strong> &nbsp;·&nbsp;
+  <a href="https://github.com/Philotheephilix/weave/releases/tag/v0.1.0">⬇ Download for Mac</a> &nbsp;·&nbsp;
+  <a href="https://sepolia.etherscan.io">Contracts on Sepolia</a>
+</p>
+
+<br/>
 
 **Decentralized, privacy-first collaboration for teams, orgs, and DAOs — full Microsoft Teams feature parity, zero surveillance surface.**
 
@@ -44,36 +54,35 @@ Weave is a decentralized collaboration platform where:
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Weave Desktop (Electron)                                │
-│                                                         │
-│  Renderer (React)          Main Process (Node)          │
-│  ┌──────────────┐          ┌───────────────────────┐    │
-│  │ OrgAdminPanel│          │ ipc-handlers.ts        │    │
-│  │ ChannelView  │◄────────►│ arkiv-manager.ts       │    │
-│  │ page.tsx     │ IPC/     │ identity-manager.ts    │    │
-│  │ arkiv-poller │ bridge   │ onion-server/client    │    │
-│  └──────────────┘          │ tor-manager.ts         │    │
-│                            │ call-orchestrator.ts   │    │
-│                            └───────────┬───────────┘    │
-└────────────────────────────────────────┼────────────────┘
-                                         │
-              ┌──────────────────────────┼──────────────────────┐
-              │                          │                       │
-    ┌─────────▼──────────┐   ┌──────────▼────────┐   ┌────────▼───────┐
-    │  Ethereum (Sepolia) │   │  Arkiv Testnet    │   │  Tor Network   │
-    │  ENSv2 registry    │   │  E2E encrypted    │   │  Onion-to-onion│
-    │  WeaveRegistrar    │   │  channel messages │   │  voice/video   │
-    │  WeaveRoleRegistry │   │  + DMs            │   │  + file xfer   │
-    │  Wildcard resolver │   └───────────────────┘   └────────────────┘
-    └────────────────────┘
-              │
-    ┌─────────▼──────────┐
-    │  CRE (Go WASM)     │
-    │  Confidential ENS  │
-    │  write workflow    │
-    └────────────────────┘
+```mermaid
+graph TD
+    subgraph Electron["Weave Desktop (Electron)"]
+        R["Renderer — React\nOrgAdminPanel · ChannelView\npage.tsx · arkiv-poller"]
+        M["Main Process — Node.js\nipc-handlers.ts · arkiv-manager.ts\nidentity-manager.ts · tor-manager.ts\nonion-server/client · call-orchestrator.ts"]
+        R <-->|IPC / contextBridge| M
+    end
+
+    M -->|ENS reads/writes| ETH
+    M -->|post/fetch messages| ARK
+    M -->|onion circuits| TOR
+
+    subgraph ETH["Ethereum — Sepolia"]
+        REG["WeavePermissionedRegistry"]
+        REGS["WeaveRegistrar"]
+        RES["WeaveWildcardResolver"]
+        NOTIF["NotificationLog"]
+        CRE["CRE — Go WASM\nConfidential ENS write workflow"]
+        REGS --> REG
+        CRE --> REGS
+    end
+
+    subgraph ARK["Arkiv Testnet"]
+        AK["E2E-encrypted channel messages\nclient-side keyed · time-scoped"]
+    end
+
+    subgraph TOR["Tor Network"]
+        O["Onion-to-onion\nvoice · video · file xfer\nNoise_XX · no relay"]
+    end
 ```
 
 ### Identity layer — ENSv2 + EAC
@@ -174,7 +183,7 @@ weave/
 ├── contracts/         Solidity (Foundry) — ENS registry + role system
 ├── cre-workflow/      Go WASM confidential ENS write workflow
 ├── docs/              Architecture docs, feature specs
-└── scripts/           Utility scripts
+└── landing/           Landing page — weave.davinciin.xyz
 ```
 
 See [`CLAUDE.md`](./CLAUDE.md) for full navigation guide, IPC pattern, and dev workflow.
